@@ -276,12 +276,17 @@ shasum -a 256 -c SHA256SUMS.txt
 
 Build all 11 apps into `builds/`:
 ```sh
-./scripts/build_all.sh
+mkdir -p builds
+for src in src/*/*/*.goose; do
+  name="$(basename "$src" .goose)"
+  goose build -O2 "$src" -o "builds/$name"
+done
 ```
 
-Run all typechecks, unit tests (`--test`), CLI checks, and headless GPU smoke tests:
+Run all typechecks and built-in unit tests (`--test`):
 ```sh
-./scripts/test_all.sh
+for src in src/*/*/*.goose; do goose check "$src"; done
+for bin in builds/*; do [ -x "$bin" ] && "$bin" --test; done
 ```
 
 Build and run a single app manually:
@@ -311,13 +316,6 @@ goose build -O2 src\games3d\voxel_runner\voxel_runner.goose -o builds\voxel_runn
 
 .\builds\e_journal.exe --test
 .\builds\e_journal.exe
-```
-
-### Regenerating Screenshots
-
-Requires Python 3 + Pillow (`pip install pillow`) for rendering ANSI terminal captures:
-```sh
-python3 ./scripts/capture_screenshots.py
 ```
 
 ---
@@ -350,23 +348,18 @@ heaven_goose/
 │       └── voxel_runner/voxel_runner.goose
 ├── builds/                         # Output folder for compiled binaries (git-ignored)
 │   └── README.md
-├── screenshots/                    # Verified app screenshots rendered in README
-│   ├── calculator.png
-│   ├── pomodoro.png
-│   ├── e_journal.png
-│   ├── pixel_studio.png
-│   ├── devbox.png
-│   ├── sysbench.png
-│   ├── term_snake.png
-│   ├── neon_breakout.png
-│   ├── sky_dash.png
-│   ├── super_goose.png
-│   └── voxel_runner.png
-└── scripts/
-    ├── build_all.sh                # Compile all 11 apps with -O2
-    ├── test_all.sh                 # Typecheck + run all test suites
-    ├── capture_screenshots.py      # Capture GUI/2D/3D + TrueColor terminal PNGs
-    └── package_release.sh          # Package release binaries, tar.gz & SHA256SUMS
+└── screenshots/                    # Verified app screenshots rendered in README
+    ├── calculator.png
+    ├── pomodoro.png
+    ├── e_journal.png
+    ├── pixel_studio.png
+    ├── devbox.png
+    ├── sysbench.png
+    ├── term_snake.png
+    ├── neon_breakout.png
+    ├── sky_dash.png
+    ├── super_goose.png
+    └── voxel_runner.png
 ```
 
 ---
