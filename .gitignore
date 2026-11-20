@@ -5,3 +5,4 @@ __pycache__/
 builds/*
 !builds/README.md
 release_assets/
+scripts
