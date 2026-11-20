@@ -2,6 +2,7 @@
 __pycache__/
 *.o
 *.c
+!src/console/sysmon/sysmon_probe.c
 builds/*
 !builds/README.md
 release_assets/
