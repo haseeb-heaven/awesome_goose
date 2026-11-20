@@ -1,0 +1,2 @@
+// Native OS telemetry probe for sysmon (macOS Mach/sysctl/libproc & Linux /proc + statvfs).
+c_sources = ["sysmon_probe.c"];
