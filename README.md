@@ -339,55 +339,6 @@ goose build -O2 src\games3d\voxel_runner\voxel_runner.goose -o builds\voxel_runn
 
 ---
 
-## Project Structure
-
-```text
-heaven_goose/
-├── LICENSE
-├── README.md
-├── .gitignore
-├── assets/
-│   └── Roboto-Regular.ttf          # Embedded TrueType UI font
-├── src/
-│   ├── gui/
-│   │   ├── calculator/calculator.goose
-│   │   ├── pomodoro/pomodoro.goose
-│   │   ├── e_journal/e_journal.goose
-│   │   └── pixel_studio/pixel_studio.goose
-│   ├── cli/
-│   │   ├── devbox/devbox.goose
-│   │   └── sysbench/sysbench.goose
-│   ├── console/
-│   │   ├── sysmon/
-│   │   │   ├── sysmon.goose
-│   │   │   ├── sysmon.build
-│   │   │   └── sysmon_probe.c
-│   │   └── term_snake/term_snake.goose
-│   ├── games2d/
-│   │   ├── neon_breakout/neon_breakout.goose
-│   │   ├── sky_dash/sky_dash.goose
-│   │   └── super_goose/super_goose.goose
-│   └── games3d/
-│       └── voxel_runner/voxel_runner.goose
-├── builds/                         # Output folder for compiled binaries (git-ignored)
-│   └── README.md
-└── screenshots/                    # Verified app screenshots rendered in README
-    ├── calculator.png
-    ├── pomodoro.png
-    ├── e_journal.png
-    ├── pixel_studio.png
-    ├── devbox.png
-    ├── sysbench.png
-    ├── sysmon.png
-    ├── term_snake.png
-    ├── neon_breakout.png
-    ├── sky_dash.png
-    ├── super_goose.png
-    └── voxel_runner.png
-```
-
----
-
 ## Libraries & Ecosystem
 
 Built using packages from the Goose ecosystem and [`safdafang/goose-index`](https://github.com/safdafang/goose-index):
@@ -397,6 +348,19 @@ Built using packages from the Goose ecosystem and [`safdafang/goose-index`](http
 - [`Macho0x/goose-uuid`](https://github.com/Macho0x/goose-uuid) — RFC 9562 UUID generator
 - [`clintecker/goose-date`](https://github.com/clintecker/goose-date) — UTC date/time formatting
 - [`haseeb-heaven/goose-imgui`](https://github.com/haseeb-heaven/goose-imgui) — Dear ImGui 1.93.0 bindings for Goose, with a typed immediate-mode GUI API, SDL3/SDL_GPU rendering, docking, and offscreen screenshots.
+
+### ImGui — Screenshot Gallery
+
+Four example applications from [**goose-imgui**](https://github.com/haseeb-heaven/goose-imgui), rendered with Dear ImGui and SDL3/SDL_GPU.
+
+| Calculator | UI Showcase |
+|:---:|:---:|
+| <img src="https://raw.githubusercontent.com/haseeb-heaven/goose-imgui/develop/screenshots/calculator.png" alt="goose-imgui calculator example" width="420"> | <img src="https://raw.githubusercontent.com/haseeb-heaven/goose-imgui/develop/screenshots/showcase.png" alt="goose-imgui showcase example" width="420"> |
+| **System Monitor** | **Node Graph** |
+| <img src="https://raw.githubusercontent.com/haseeb-heaven/goose-imgui/develop/screenshots/system_monitor.png" alt="goose-imgui system monitor example" width="420"> | <img src="https://raw.githubusercontent.com/haseeb-heaven/goose-imgui/develop/screenshots/node_graph.png" alt="goose-imgui node graph example" width="420"> |
+
+_Screenshots are hosted in the [goose-imgui repository](https://github.com/haseeb-heaven/goose-imgui/tree/develop/screenshots)._
+
 
 ---
 
