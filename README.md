@@ -9,7 +9,7 @@
 
 A curated, tested, and optimized collection of **12 standalone applications and games** written in the [**Goose**](https://github.com/aardappel/goose) systems programming language — spanning **Desktop GUI Apps**, **CLI Utilities**, **2D Terminal UI (System Monitor & Console Game)**, **2D GPU Arcade / Runner / Platformer**, and **3D GPU Graphics**.
 
-> Separate directories for clean source code ([`src/`](src/)) and compiled executables ([`builds/`](builds/)), with reproducible test suites, headless screenshot generation, and prebuilt binaries attached on [GitHub Releases](https://github.com/haseeb-heaven/heaven_goose/releases).
+> Separate directories for clean source code ([`src/`](src/)) and compiled executables ([`builds/`](builds/)), with reproducible test suites, headless screenshot generation, and prebuilt binaries attached on [GitHub Releases](https://github.com/haseeb-heaven/awesome_goose/releases).
 
 ---
 
@@ -248,10 +248,10 @@ A 3D endless cyber-highway runner written with custom GLSL vertex/fragment shade
 
 ## Downloads (Prebuilt Binaries)
 
-Prebuilt native executables and checksums are published on the [**Releases Page**](https://github.com/haseeb-heaven/heaven_goose/releases):
+Prebuilt native executables and checksums are published on the [**Releases Page**](https://github.com/haseeb-heaven/awesome_goose/releases):
 
-- **Latest Release**: [`github.com/haseeb-heaven/heaven_goose/releases/latest`](https://github.com/haseeb-heaven/heaven_goose/releases/latest)
-- **v2.2.1 Release**: [`github.com/haseeb-heaven/heaven_goose/releases/tag/v2.2.1`](https://github.com/haseeb-heaven/heaven_goose/releases/tag/v2.2.1)
+- **Latest Release**: [`github.com/haseeb-heaven/awesome_goose/releases/latest`](https://github.com/haseeb-heaven/awesome_goose/releases/latest)
+- **v2.2.1 Release**: [`github.com/haseeb-heaven/awesome_goose/releases/tag/v2.2.1`](https://github.com/haseeb-heaven/awesome_goose/releases/tag/v2.2.1)
 
 Available assets in `v2.2.1`:
 - **`heaven_goose-v2.2.1-macos-arm64.tar.gz`** — Archive with all 12 compiled apps + `LICENSE` + `README.md`
@@ -287,8 +287,8 @@ shasum -a 256 -c SHA256SUMS.txt
 2. Ensure a C compiler (`clang`, `gcc`, or `msvc`) is available (`goose build` uses it to emit native binaries).
 3. Clone this repository:
    ```sh
-   git clone https://github.com/haseeb-heaven/heaven_goose.git
-   cd heaven_goose
+   git clone https://github.com/haseeb-heaven/awesome_goose.git
+   cd awesome_goose
    ```
 
 ### macOS (Apple Silicon / Intel) & Linux (`x86_64` / `arm64`)
