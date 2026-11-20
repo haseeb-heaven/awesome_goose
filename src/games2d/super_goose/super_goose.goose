@@ -3,16 +3,19 @@
 // Features:
 //   - Four full side-scrolling worlds (1-1 Sunny Meadow, 1-2 Twilight Highlands,
 //     1-3 Sunset Sky Bridges, 1-4 Crimson Fortress) + stage-select hotkeys (1-4)
+//   - Mid-stage Checkpoint Flags ('K') + persistent save/resume (~/.heaven_super_goose_save.json)
+//   - Dying / Game Over retries your current world (or checkpoint!) instead of resetting to 1-1
 //   - Mario-inspired physics: acceleration, friction, coyote time, jump buffer, separate X/Y AABB
 //   - Head-bonk Question Blocks ('?' coins & 'M' Golden Feather power-up to grow Super Goose!)
 //   - Patrolling foes you can stomp from above (+200 + bounce), warp pipes, Victory Castle & flagpole
 //   - Pixel-art multi-quad Super Goose hero, parallax clouds & hills, Retina HUD, chiptune SFX
-//   - CLI flags: --test, --demo, --frames N, --screenshot <path>
+//   - CLI flags: --save <path>, --test, --demo, --frames N, --screenshot <path>
 
 import std;
 import vec;
 import math;
 import os;
+import json;
 import gfx;
 import ui;
 import audio;
@@ -68,6 +71,15 @@ struct Particle {
     color: u8[4],
 }
 
+struct SaveData {
+    world_num: i64,
+    unlocked_world: i64,
+    checkpoint: bool,
+    score: i64,
+    coins: i64,
+    big: bool,
+}
+
 struct PlatformGame {
     tiles: u8[1680],
     bump: f32[1680],
@@ -76,6 +88,12 @@ struct PlatformGame {
     parts: Particle[64],
     feather: Feather,
     world_num: i64,
+    unlocked_world: i64,
+    checkpoint_tx: i64,
+    checkpoint_reached: bool,
+    save_dirty: bool,
+    banner_t: f32,
+    banner_kind: i64,
     px: f32,
     py: f32,
     vx: f32,
@@ -104,6 +122,7 @@ struct PlatformGame {
     sfx_stomp: bool,
     sfx_power: bool,
     sfx_clear: bool,
+    sfx_checkpoint: bool,
 }
 
 fn check(ok: bool, msg: const u8[:]) {
@@ -147,8 +166,18 @@ fn add_pipe(g: PlatformGame&, tx: i64, top_y: i64) {
     }
 }
 
-fn load_level(g: PlatformGame&, level_num: i64) {
-    g.world_num = level_num;
+fn add_checkpoint(g: PlatformGame&, tx: i64) {
+    g.checkpoint_tx = tx;
+    set_tile(g, tx, 10, 'K');
+    set_tile(g, tx, 11, 'K');
+    set_tile(g, tx, 12, 'K');
+}
+
+fn load_level_at(g: PlatformGame&, level_num: i64, at_checkpoint: bool) {
+    let lv = clamp(level_num, 1, MAX_WORLDS);
+    g.world_num = lv;
+    if g.world_num > g.unlocked_world { g.unlocked_world = g.world_num; }
+    g.checkpoint_tx = 0;
     for i in MAX_TILES {
         g.tiles[i] = '.';
         g.bump[i] = 0.0;
@@ -158,7 +187,7 @@ fn load_level(g: PlatformGame&, level_num: i64) {
     for i in MAX_PARTS { g.parts[i] = default<Particle>(); }
     g.feather = default<Feather>();
 
-    if level_num == 1 {
+    if lv == 1 {
         // World 1-1 Sunny Meadow
         fill_ground(g, 0, 32);
         fill_ground(g, 35, 62);
@@ -181,10 +210,11 @@ fn load_level(g: PlatformGame&, level_num: i64) {
         // Coin arc over first pit (x=33..34)
         set_tile(g, 33, 8, 'C'); set_tile(g, 34, 8, 'C');
 
-        // Mid-stage elevated platform & bricks
+        // Mid-stage elevated platform, checkpoint flag & bricks
         set_tile(g, 42, 9, 'B'); set_tile(g, 43, 9, '?'); set_tile(g, 44, 9, 'B');
         set_tile(g, 47, 6, 'B'); set_tile(g, 48, 6, 'B'); set_tile(g, 49, 6, 'B');
         set_tile(g, 48, 5, 'C'); set_tile(g, 49, 5, 'C');
+        add_checkpoint(g, 51);
 
         add_pipe(g, 54, 10);
         set_tile(g, 63, 9, 'C'); set_tile(g, 64, 9, 'C');
@@ -220,7 +250,7 @@ fn load_level(g: PlatformGame&, level_num: i64) {
                 h: 28.0,
             };
         }
-    } else if level_num == 2 {
+    } else if lv == 2 {
         // World 1-2 Twilight Highlands
         fill_ground(g, 0, 22);
         fill_ground(g, 25, 48);
@@ -233,6 +263,7 @@ fn load_level(g: PlatformGame&, level_num: i64) {
         set_tile(g, 30, 9, 'B'); set_tile(g, 31, 9, '?'); set_tile(g, 32, 9, '?'); set_tile(g, 33, 9, 'B');
         add_pipe(g, 38, 10);
         set_tile(g, 49, 8, 'C'); set_tile(g, 50, 8, 'C');
+        add_checkpoint(g, 52);
         set_tile(g, 56, 9, 'B'); set_tile(g, 57, 9, '?'); set_tile(g, 58, 9, 'B');
         set_tile(g, 64, 6, 'C'); set_tile(g, 65, 6, 'C'); set_tile(g, 66, 6, 'C');
         add_pipe(g, 70, 10);
@@ -247,7 +278,7 @@ fn load_level(g: PlatformGame&, level_num: i64) {
         for y in 4..13 { set_tile(g, 99, y, 'F'); }
         set_tile(g, 99, 12, 'S');
 
-        let exs: f32[8] = [13.0, 28.0, 35.0, 44.0, 55.0, 62.0, 68.0, 82.0];
+        let exs: f32[8] = [13.0, 28.0, 35.0, 44.0, 58.0, 62.0, 68.0, 82.0];
         for i in 8 {
             g.enemies[i] = Enemy {
                 alive: true,
@@ -260,7 +291,7 @@ fn load_level(g: PlatformGame&, level_num: i64) {
                 h: 28.0,
             };
         }
-    } else if level_num == 3 {
+    } else if lv == 3 {
         // World 1-3 Sunset Sky Bridges
         fill_ground(g, 0, 18);
         fill_ground(g, 21, 33);
@@ -285,7 +316,8 @@ fn load_level(g: PlatformGame&, level_num: i64) {
         set_tile(g, 44, 6, 'C'); set_tile(g, 45, 6, 'C'); set_tile(g, 46, 6, 'C');
         set_tile(g, 50, 8, 'C'); set_tile(g, 51, 8, 'C');
 
-        // Mid bricks & 3-tile pipe at x=60
+        // Mid checkpoint, bricks & 3-tile pipe at x=60
+        add_checkpoint(g, 53);
         set_tile(g, 55, 9, 'B'); set_tile(g, 56, 9, '?'); set_tile(g, 57, 9, 'B');
         add_pipe(g, 60, 10);
         set_tile(g, 66, 8, 'C'); set_tile(g, 67, 8, 'C');
@@ -306,7 +338,7 @@ fn load_level(g: PlatformGame&, level_num: i64) {
         for y in 4..13 { set_tile(g, 99, y, 'F'); }
         set_tile(g, 99, 12, 'S');
 
-        let exs: f32[9] = [14.0, 24.0, 32.0, 41.0, 47.0, 56.0, 69.0, 75.0, 85.0];
+        let exs: f32[9] = [14.0, 24.0, 32.0, 41.0, 47.0, 58.0, 69.0, 75.0, 85.0];
         for i in 9 {
             g.enemies[i] = Enemy {
                 alive: true,
@@ -337,9 +369,10 @@ fn load_level(g: PlatformGame&, level_num: i64) {
         set_tile(g, 41, 9, 'S'); set_tile(g, 42, 9, '?'); set_tile(g, 43, 9, 'S');
         add_pipe(g, 48, 10);
 
-        // Fortress stone bridge spanning lava moat at x=54..55
+        // Fortress stone bridge spanning lava moat at x=54..55 + checkpoint at x=59
         for bx in 53..59 { set_tile(g, bx, 9, 'S'); }
         set_tile(g, 55, 7, 'C'); set_tile(g, 56, 7, 'C');
+        add_checkpoint(g, 59);
         set_tile(g, 61, 9, 'B'); set_tile(g, 62, 9, '?'); set_tile(g, 63, 9, 'B');
         add_pipe(g, 66, 10);
         set_tile(g, 70, 9, 'S'); set_tile(g, 71, 9, '?'); set_tile(g, 72, 9, 'S');
@@ -355,7 +388,7 @@ fn load_level(g: PlatformGame&, level_num: i64) {
         for y in 4..13 { set_tile(g, 99, y, 'F'); }
         set_tile(g, 99, 12, 'S');
 
-        let exs: f32[10] = [13.0, 21.0, 31.0, 42.0, 44.0, 58.0, 63.0, 71.0, 79.0, 84.0];
+        let exs: f32[10] = [13.0, 21.0, 31.0, 42.0, 44.0, 62.0, 63.0, 71.0, 79.0, 84.0];
         for i in 10 {
             g.enemies[i] = Enemy {
                 alive: true,
@@ -370,19 +403,40 @@ fn load_level(g: PlatformGame&, level_num: i64) {
         }
     }
 
-    g.px = 3.0 * TILE;
-    g.py = 13.0 * TILE - (if g.big { 42.0 } else { 32.0 });
+    let ph: f32 = if g.big { 42.0 } else { 32.0 };
+    if at_checkpoint && g.checkpoint_tx > 0 {
+        g.px = g.checkpoint_tx * TILE;
+        g.py = 13.0 * TILE - ph;
+        g.checkpoint_reached = true;
+        g.invuln_t = 1.0;
+        g.cam_x = clamp(g.px - VIEW_W * 0.35, 0.0, MAP_W * TILE - VIEW_W);
+        // Clear enemies near/behind the checkpoint so respawning is never spawn-camped
+        for i in MAX_ENEMIES {
+            if g.enemies[i].alive && g.enemies[i].x < (g.checkpoint_tx + 3) * TILE {
+                g.enemies[i].alive = false;
+            }
+        }
+    } else {
+        g.px = 3.0 * TILE;
+        g.py = 13.0 * TILE - ph;
+        g.checkpoint_reached = false;
+        g.invuln_t = 0.0;
+        g.cam_x = 0.0;
+    }
     g.vx = 0.0;
     g.vy = 0.0;
     g.facing = 1.0;
     g.on_ground = true;
     g.coyote_t = 0.1;
     g.jump_buf_t = 0.0;
-    g.cam_x = 0.0;
     g.time_left = 180.0;
     g.won_level = false;
     g.won_game = false;
     g.win_timer = 0.0;
+}
+
+fn load_level(g: PlatformGame&, level_num: i64) {
+    load_level_at(g, level_num, false);
 }
 
 fn new_platform(seed: u64) -> PlatformGame {
@@ -394,6 +448,12 @@ fn new_platform(seed: u64) -> PlatformGame {
         parts: [default<Particle>(); 64],
         feather: default<Feather>(),
         world_num: 1,
+        unlocked_world: 1,
+        checkpoint_tx: 0,
+        checkpoint_reached: false,
+        save_dirty: false,
+        banner_t: 0.0,
+        banner_kind: 0,
         px: 108.0,
         py: 400.0,
         vx: 0.0,
@@ -422,6 +482,7 @@ fn new_platform(seed: u64) -> PlatformGame {
         sfx_stomp: false,
         sfx_power: false,
         sfx_clear: false,
+        sfx_checkpoint: false,
     };
     load_level(g, 1);
     return g;
@@ -429,6 +490,124 @@ fn new_platform(seed: u64) -> PlatformGame {
 
 fn player_w() -> f32 { 26.0 }
 fn player_h(g: const PlatformGame&) -> f32 { if g.big { 42.0 } else { 32.0 } }
+
+fn default_save_path() -> u8[>..] {
+    var home: u8[>..] = [];
+    if env("HOME", home) && home.len > 0 {
+        return str(home, "/.heaven_super_goose_save.json");
+    }
+    return str("super_goose_save.json");
+}
+
+fn make_save_data(g: const PlatformGame&) -> SaveData {
+    let save_world = if g.won_level && !g.won_game {
+        min(g.world_num + 1, MAX_WORLDS)
+    } else {
+        clamp(g.world_num, 1, MAX_WORLDS)
+    };
+    let save_cp = if g.won_level { false } else { g.checkpoint_reached };
+    let unlocked = clamp(max(g.unlocked_world, save_world), 1, MAX_WORLDS);
+    return SaveData {
+        world_num: save_world,
+        unlocked_world: unlocked,
+        checkpoint: save_cp,
+        score: max(g.score, 0),
+        coins: max(g.coins, 0),
+        big: g.big,
+    };
+}
+
+fn encode_save_json(s: const SaveData&) -> u8[>..] {
+    var out: u8[>..] = [];
+    out.append("{\"version\":1,");
+    json::format_key(out, "world_num"); json::format_int(out, s.world_num); out.push(',');
+    json::format_key(out, "unlocked_world"); json::format_int(out, s.unlocked_world); out.push(',');
+    json::format_key(out, "checkpoint"); json::format_bool(out, s.checkpoint); out.push(',');
+    json::format_key(out, "score"); json::format_int(out, s.score); out.push(',');
+    json::format_key(out, "coins"); json::format_int(out, s.coins); out.push(',');
+    json::format_key(out, "big"); json::format_bool(out, s.big);
+    out.append("}\n");
+    return out;
+}
+
+fn decode_save_json(text: const u8[:], s: SaveData&) -> bool {
+    s = SaveData {
+        world_num: 1,
+        unlocked_world: 1,
+        checkpoint: false,
+        score: 0,
+        coins: 0,
+        big: false,
+    };
+    var r = json::reader(text);
+    json::each_member(r) { key =>
+        if key == "world_num" { s.world_num = json::read_int(r); }
+        else if key == "unlocked_world" { s.unlocked_world = json::read_int(r); }
+        else if key == "checkpoint" { s.checkpoint = json::read_bool(r); }
+        else if key == "score" { s.score = json::read_int(r); }
+        else if key == "coins" { s.coins = json::read_int(r); }
+        else if key == "big" { s.big = json::read_bool(r); }
+        else { json::skip(r); }
+    };
+    if !json::finish(r) {
+        s = SaveData {
+            world_num: 1,
+            unlocked_world: 1,
+            checkpoint: false,
+            score: 0,
+            coins: 0,
+            big: false,
+        };
+        return false;
+    }
+    s.world_num = clamp(s.world_num, 1, MAX_WORLDS);
+    s.unlocked_world = clamp(max(s.unlocked_world, s.world_num), 1, MAX_WORLDS);
+    s.score = max(s.score, 0);
+    s.coins = max(s.coins, 0);
+    return true;
+}
+
+fn save_progress_file(path: const u8[:], s: const SaveData&) -> bool {
+    let bytes = encode_save_json(s);
+    return write_file_atomic(path, bytes);
+}
+
+fn load_progress_file(path: const u8[:], s: SaveData&) -> bool {
+    var raw: u8[>..] = [];
+    if !read_file(path, raw) { return false; }
+    return decode_save_json(raw, s);
+}
+
+fn apply_save_data(g: PlatformGame&, s: const SaveData&) {
+    let w = clamp(s.world_num, 1, MAX_WORLDS);
+    g.unlocked_world = clamp(max(s.unlocked_world, w), 1, MAX_WORLDS);
+    g.score = max(s.score, 0);
+    g.coins = max(s.coins, 0);
+    g.big = s.big;
+    g.lives = 3;
+    g.game_over = false;
+    g.paused = false;
+    load_level_at(g, w, s.checkpoint);
+    if g.world_num > 1 || g.checkpoint_reached {
+        g.banner_kind = 3;
+        g.banner_t = 2.4;
+    }
+}
+
+fn retry_current_world(g: PlatformGame&) {
+    let target_w = clamp(g.world_num, 1, MAX_WORLDS);
+    let use_cp = g.checkpoint_reached;
+    g.lives = 3;
+    g.big = false;
+    g.game_over = false;
+    g.paused = false;
+    load_level_at(g, target_w, use_cp);
+}
+
+fn persist_game_save(g: const PlatformGame&, path: const u8[:]) {
+    let sd = make_save_data(g);
+    let _ = save_progress_file(path, sd);
+}
 
 fn spawn_parts(g: PlatformGame&, x: f32, y: f32, col: u8[4], count: i64) {
     var s: i64 = 0;
@@ -545,16 +724,24 @@ fn step_platform(g: PlatformGame&, dt: f32, move_in: f32, jump_pressed: bool,
     g.sfx_stomp = false;
     g.sfx_power = false;
     g.sfx_clear = false;
+    g.sfx_checkpoint = false;
+    g.save_dirty = false;
     if g.paused || g.game_over { return; }
 
     g.time_s += dt;
+    if g.banner_t > 0.0 { g.banner_t = max(g.banner_t - dt, 0.0); }
     if g.won_level {
         g.win_timer -= dt;
         if g.win_timer <= 0.0 {
             if !g.won_game {
-                load_level(g, g.world_num + 1);
+                let next_w = g.world_num + 1;
+                if next_w > g.unlocked_world { g.unlocked_world = next_w; }
+                load_level_at(g, next_w, false);
+                g.save_dirty = true;
+                g.banner_kind = 2;
+                g.banner_t = 2.0;
             } else if demo_ai {
-                load_level(g, 1);
+                load_level_at(g, 1, false);
             }
         }
         return;
@@ -681,15 +868,28 @@ fn step_platform(g: PlatformGame&, dt: f32, move_in: f32, jump_pressed: bool,
                     g.win_timer = 2.5;
                     g.score += 2500 + (g.time_left as i64) * 5;
                 } else {
+                    if g.world_num + 1 > g.unlocked_world { g.unlocked_world = g.world_num + 1; }
                     g.win_timer = 1.8;
                     g.score += 1000 + (g.time_left as i64) * 5;
                 }
                 g.sfx_clear = true;
+                g.save_dirty = true;
                 spawn_parts(g, tx * TILE + 18.0, g.py, [100, 255, 160, 255], 20);
             }
             tx++;
         }
         ty++;
+    }
+
+    // Mid-stage checkpoint flag activation
+    if !g.checkpoint_reached && g.checkpoint_tx > 0 && g.px + pw * 0.5 >= g.checkpoint_tx * TILE {
+        g.checkpoint_reached = true;
+        g.score += 300;
+        g.sfx_checkpoint = true;
+        g.save_dirty = true;
+        g.banner_kind = 1;
+        g.banner_t = 2.2;
+        spawn_parts(g, g.checkpoint_tx * TILE + 18.0, 10.5 * TILE, [72, 238, 156, 255], 16);
     }
 
     // Golden Feather power-up physics
@@ -765,7 +965,7 @@ fn step_platform(g: PlatformGame&, dt: f32, move_in: f32, jump_pressed: bool,
                 } else {
                     g.lives -= 1;
                     if g.lives <= 0 { g.game_over = true; }
-                    else { load_level(g, g.world_num); }
+                    else { load_level_at(g, g.world_num, g.checkpoint_reached); }
                     return;
                 }
             }
@@ -781,7 +981,7 @@ fn step_platform(g: PlatformGame&, dt: f32, move_in: f32, jump_pressed: bool,
             g.big = false;
             g.lives -= 1;
             if g.lives <= 0 { g.game_over = true; }
-            else { load_level(g, g.world_num); }
+            else { load_level_at(g, g.world_num, g.checkpoint_reached); }
             return;
         }
     }
@@ -981,6 +1181,21 @@ fn render_platform(g: const PlatformGame&, verts: Vertex2D[>..]&) {
                         push_quad(verts, sx + 14.0, sy - 6.0, 8.0, 8.0, [255, 215, 50, 255]);
                         push_quad(verts, sx - 16.0, sy + 4.0, 32.0, 20.0, [36, 200, 96, 255]);
                     }
+                } else if ch == 'K' {
+                    push_quad(verts, sx + 15.0, sy, 6.0, TILE, [215, 224, 236, 255]);
+                    if ty == 12 {
+                        push_quad(verts, sx + 8.0, sy + TILE - 8.0, 20.0, 8.0, [130, 140, 158, 255]);
+                    } else if ty == 10 {
+                        if g.checkpoint_reached {
+                            let wave = sin(g.time_s * 8.0) * 2.0;
+                            push_quad(verts, sx + 14.0, sy - 5.0, 8.0, 8.0, [255, 215, 50, 255]);
+                            push_quad(verts, sx + 21.0, sy + 2.0 + wave, 26.0, 16.0, [52, 211, 153, 255]);
+                            push_quad(verts, sx + 24.0, sy + 6.0 + wave, 12.0, 6.0, [255, 224, 70, 255]);
+                        } else {
+                            push_quad(verts, sx + 14.0, sy - 5.0, 8.0, 8.0, [210, 220, 235, 255]);
+                            push_quad(verts, sx + 21.0, sy + 18.0, 22.0, 14.0, [239, 68, 68, 255]);
+                        }
+                    }
                 }
             }
             tx++;
@@ -1156,6 +1371,9 @@ fn run_tests() {
         check(has_flag, "flagpole missing near end of stage");
         check(min_pipe_top >= 10, "pipe taller than 3 tiles in stage");
         check(max_pit <= 3, "contiguous pit too wide to clear safely");
+        check(gw.checkpoint_tx >= 45 && gw.checkpoint_tx <= 65, "checkpoint tx out of range");
+        check(tile_at(gw, gw.checkpoint_tx, 13) == 'G', "checkpoint ground missing");
+        check(tile_at(gw, gw.checkpoint_tx, 11) == 'K', "checkpoint flag tile missing");
 
         var vtmp: Vertex2D[>..] = [];
         render_platform(gw, vtmp);
@@ -1194,7 +1412,75 @@ fn run_tests() {
     }
     check(gprog.won_game, "completing World 1-4 must set won_game = true");
 
-    print("PASS super_goose (4 worlds 1-1..1-4, coyote jump, pipe clearance, ?-block bonk, stomp physics, GPU batching)\n");
+    // Test per-level retry without checkpoint in World 1-3 (never resets to World 1-1)
+    var g13 = new_platform(55);
+    load_level(g13, 3);
+    check(g13.world_num == 3 && !g13.checkpoint_reached && g13.lives == 3, "world 1-3 init invalid");
+    for _ in 3 {
+        g13.py = VIEW_H + 80.0;
+        step_platform(g13, 0.016, 0.0, false, false, false);
+    }
+    check(g13.game_over && g13.world_num == 3 && !g13.checkpoint_reached,
+          "3 pit deaths in world 1-3 must trigger game_over on world 1-3");
+    retry_current_world(g13);
+    check(g13.world_num == 3 && g13.lives == 3 && !g13.game_over && g13.px == 3.0 * TILE,
+          "retrying world 1-3 before checkpoint must resume start of world 1-3");
+
+    // Test mid-stage checkpoint activation, respawn, and Game Over continue in World 1-3
+    var gcp = new_platform(77);
+    load_level(gcp, 3);
+    gcp.px = gcp.checkpoint_tx * TILE;
+    gcp.py = 12.0 * TILE;
+    step_platform(gcp, 0.016, 1.0, false, false, false);
+    check(gcp.checkpoint_reached && gcp.save_dirty && gcp.sfx_checkpoint,
+          "crossing checkpoint flag in world 1-3 must activate checkpoint & trigger save");
+    gcp.coins = 5;
+    gcp.big = true;
+    let cp_x = gcp.checkpoint_tx * TILE;
+    gcp.py = VIEW_H + 80.0;
+    step_platform(gcp, 0.016, 0.0, false, false, false);
+    check(gcp.lives == 2 && !gcp.game_over && gcp.world_num == 3 &&
+          gcp.checkpoint_reached && gcp.px == cp_x,
+          "dying after checkpoint in world 1-3 must respawn at world 1-3 checkpoint");
+    for _ in 2 {
+        gcp.py = VIEW_H + 80.0;
+        step_platform(gcp, 0.016, 0.0, false, false, false);
+    }
+    check(gcp.game_over && gcp.world_num == 3 && gcp.checkpoint_reached,
+          "losing all lives must preserve world 3 & checkpoint for retry");
+    retry_current_world(gcp);
+    check(gcp.world_num == 3 && gcp.lives == 3 && !gcp.game_over &&
+          gcp.checkpoint_reached && gcp.px == cp_x,
+          "continuing after Game Over must resume world 1-3 checkpoint");
+
+    // Test persistent atomic JSON save/load & resume in World 1-3 at checkpoint
+    let tmp_save = "/tmp/heaven_super_goose_save_test.json";
+    let sd_out = make_save_data(gcp);
+    check(sd_out.world_num == 3 && sd_out.checkpoint && sd_out.coins == 5 && sd_out.score >= 300,
+          "make_save_data fields mismatch");
+    check(save_progress_file(tmp_save, sd_out), "save_progress_file failed");
+    var sd_in = SaveData {
+        world_num: 1, unlocked_world: 1, checkpoint: false, score: 0, coins: 0, big: false,
+    };
+    let load_ok = load_progress_file(tmp_save, sd_in);
+    let _ = delete_file(tmp_save);
+    check(load_ok && sd_in.world_num == 3 && sd_in.checkpoint && sd_in.coins == 5 &&
+          sd_in.score == sd_out.score, "load_progress_file roundtrip failed");
+
+    var gres = new_platform(123);
+    apply_save_data(gres, sd_in);
+    check(gres.world_num == 3 && gres.checkpoint_reached && gres.px == gres.checkpoint_tx * TILE &&
+          gres.coins == 5 && gres.score == sd_out.score && gres.lives == 3,
+          "apply_save_data must resume world 1-3 checkpoint");
+
+    // Corrupt save JSON must fail gracefully
+    var bad_sd = SaveData {
+        world_num: 4, unlocked_world: 4, checkpoint: true, score: 99, coins: 9, big: true,
+    };
+    check(!decode_save_json("{\"world_num\":", bad_sd) && bad_sd.world_num == 1 && !bad_sd.checkpoint,
+          "corrupt save JSON must fail cleanly and reset defaults");
+
+    print("PASS super_goose (4 worlds 1-1..1-4, mid-level checkpoints, persistent save/resume, physics, GPU batching)\n");
 }
 
 fn main() {
@@ -1202,6 +1488,7 @@ fn main() {
     var frames: i64 = -1;
     var demo_mode = false;
     var screenshot_path = str("");
+    var save_path = default_save_path();
 
     var i: i64 = 1;
     while i < argv.len {
@@ -1217,6 +1504,9 @@ fn main() {
             i++;
         } else if a == "--screenshot" && i + 1 < argv.len {
             screenshot_path = str(argv[i + 1]);
+            i++;
+        } else if a == "--save" && i + 1 < argv.len {
+            save_path = str(argv[i + 1]);
             i++;
         }
         i++;
@@ -1305,6 +1595,20 @@ fn main() {
         game.score = 1250;
         game.coins = 7;
     }
+    let persist_save = !demo_mode && screenshot_path.len == 0;
+    if persist_save {
+        var saved = SaveData {
+            world_num: 1,
+            unlocked_world: 1,
+            checkpoint: false,
+            score: 0,
+            coins: 0,
+            big: false,
+        };
+        if load_progress_file(save_path, saved) {
+            apply_save_data(game, saved);
+        }
+    }
 
     var verts: Vertex2D[>..] = [];
     var drawn: i64 = 0;
@@ -1313,11 +1617,32 @@ fn main() {
     while gfx::frame() {
         if gfx::key_pressed("Escape") { break; }
         if gfx::key_pressed("P") && !game.game_over && !game.won_level { game.paused = !game.paused; }
-        if gfx::key_pressed("R") { game = new_platform(random_seed()); }
-        if gfx::key_pressed("1") { load_level(game, 1); game.game_over = false; }
-        if gfx::key_pressed("2") { load_level(game, 2); game.game_over = false; }
-        if gfx::key_pressed("3") { load_level(game, 3); game.game_over = false; }
-        if gfx::key_pressed("4") { load_level(game, 4); game.game_over = false; }
+        if gfx::key_pressed("N") {
+            game = new_platform(random_seed());
+            if persist_save { persist_game_save(game, save_path); }
+        }
+        if gfx::key_pressed("R") {
+            if game.won_game {
+                let max_u = game.unlocked_world;
+                game = new_platform(random_seed());
+                game.unlocked_world = max_u;
+                if persist_save { persist_game_save(game, save_path); }
+            } else {
+                retry_current_world(game);
+            }
+        }
+        var pick_w: i64 = 0;
+        if gfx::key_pressed("1") { pick_w = 1; }
+        else if gfx::key_pressed("2") { pick_w = 2; }
+        else if gfx::key_pressed("3") { pick_w = 3; }
+        else if gfx::key_pressed("4") { pick_w = 4; }
+        if pick_w > 0 {
+            load_level_at(game, pick_w, false);
+            game.lives = 3;
+            game.game_over = false;
+            game.paused = false;
+            if persist_save { persist_game_save(game, save_path); }
+        }
 
         var move_x: f32 = 0.0;
         if gfx::key_down("Left") || gfx::key_down("A") { move_x -= 1.0; }
@@ -1325,18 +1650,33 @@ fn main() {
         let jump_p = gfx::key_pressed("Space") || gfx::key_pressed("W") || gfx::key_pressed("Up");
         let jump_h = gfx::key_down("Space") || gfx::key_down("W") || gfx::key_down("Up");
 
-        if (game.game_over || game.won_game) && jump_p {
+        var step_jump_p = jump_p;
+        var step_jump_h = jump_h;
+        if game.won_game && jump_p {
+            let max_u = game.unlocked_world;
             game = new_platform(random_seed());
+            game.unlocked_world = max_u;
+            if persist_save { persist_game_save(game, save_path); }
+            step_jump_p = false;
+            step_jump_h = false;
+        } else if game.game_over && jump_p {
+            retry_current_world(game);
+            step_jump_p = false;
+            step_jump_h = false;
         }
 
         let dt = if demo_mode { 1.0 / 60.0 } else { min(gfx::delta_time(), 0.04) };
-        step_platform(game, dt as f32, move_x, jump_p, jump_h, demo_mode);
+        step_platform(game, dt as f32, move_x, step_jump_p, step_jump_h, demo_mode);
+
+        if persist_save && game.save_dirty {
+            persist_game_save(game, save_path);
+        }
 
         if use_audio {
             if game.sfx_jump && sfx_j.id != 0 { audio::play(sfx_j, 0.40); }
             if game.sfx_coin && sfx_c.id != 0 { audio::play(sfx_c, 0.50); }
             if game.sfx_stomp && sfx_s.id != 0 { audio::play(sfx_s, 0.50); }
-            if game.sfx_power && sfx_p.id != 0 { audio::play(sfx_p, 0.55); }
+            if (game.sfx_power || game.sfx_checkpoint) && sfx_p.id != 0 { audio::play(sfx_p, 0.55); }
         }
 
         render_platform(game, verts);
@@ -1352,7 +1692,12 @@ fn main() {
             ui::layout_row_dynamic(ctx, 28.0, 5);
             ui::label_colored(ctx, str("GOOSE ", game.score), ui::TEXT_LEFT, ui::rgb(255, 255, 255));
             ui::label_colored(ctx, str("COINS: ", game.coins), ui::TEXT_CENTERED, ui::rgb(255, 224, 70));
-            ui::label_colored(ctx, str("WORLD 1-", game.world_num), ui::TEXT_CENTERED, ui::rgb(220, 240, 255));
+            let world_lbl: u8[>..] = if game.checkpoint_reached {
+                str("WORLD 1-", game.world_num, " [CP]")
+            } else {
+                str("WORLD 1-", game.world_num)
+            };
+            ui::label_colored(ctx, world_lbl, ui::TEXT_CENTERED, ui::rgb(220, 240, 255));
             ui::label_colored(ctx, str("LIVES: ", game.lives), ui::TEXT_CENTERED, ui::rgb(255, 130, 130));
             ui::label_colored(ctx, str("TIME: ", game.time_left as i64), ui::TEXT_RIGHT, ui::rgb(240, 248, 255));
 
@@ -1363,13 +1708,31 @@ fn main() {
                 let msg: u8[>..] = if game.won_game {
                     str("VICTORY! ALL 4 WORLDS CLEARED! Press SPACE or R to Play Again")
                 } else if game.won_level {
-                    str("WORLD 1-", game.world_num, " CLEAR! Advancing to World 1-", game.world_num + 1, "...")
+                    str("WORLD 1-", game.world_num, " CLEAR! Saved World 1-", game.world_num + 1, "...")
                 } else if game.game_over {
-                    str("GAME OVER - Press SPACE or R to Restart")
+                    if game.checkpoint_reached {
+                        str("GAME OVER - SPACE/R: Continue World 1-", game.world_num, " (Checkpoint) | N: New Game")
+                    } else {
+                        str("GAME OVER - SPACE/R: Retry World 1-", game.world_num, " | N: New Game")
+                    }
                 } else {
                     str("PAUSED - Press P to Resume")
                 };
                 ui::label_colored(ctx, msg, ui::TEXT_CENTERED, ui::rgb(255, 250, 210));
+            } else if game.banner_t > 0.0 && game.banner_kind > 0 {
+                ui::layout_row_dynamic(ctx, 36.0, 1);
+                ui::spacer(ctx);
+                ui::layout_row_dynamic(ctx, 30.0, 1);
+                let bmsg: u8[>..] = if game.banner_kind == 1 {
+                    str("CHECKPOINT SAVED - WORLD 1-", game.world_num)
+                } else if game.banner_kind == 2 {
+                    str("LEVEL SAVED - WORLD 1-", game.world_num)
+                } else if game.checkpoint_reached {
+                    str("RESUMED WORLD 1-", game.world_num, " (CHECKPOINT)")
+                } else {
+                    str("RESUMED WORLD 1-", game.world_num)
+                };
+                ui::label_colored(ctx, bmsg, ui::TEXT_CENTERED, ui::rgb(140, 255, 190));
             }
         }
         ui::end(ctx);
