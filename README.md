@@ -396,6 +396,7 @@ Built using packages from the Goose ecosystem and [`safdafang/goose-index`](http
 - [`ZHENGSY/goose-tui`](https://github.com/ZHENGSY/goose-tui) — Immediate-mode diffed terminal UI framework
 - [`Macho0x/goose-uuid`](https://github.com/Macho0x/goose-uuid) — RFC 9562 UUID generator
 - [`clintecker/goose-date`](https://github.com/clintecker/goose-date) — UTC date/time formatting
+- [`haseeb-heaven/goose-imgui`](https://github.com/haseeb-heaven/goose-imgui) — Dear ImGui 1.93.0 bindings for Goose, with a typed immediate-mode GUI API, SDL3/SDL_GPU rendering, docking, and offscreen screenshots.
 
 ---
 
