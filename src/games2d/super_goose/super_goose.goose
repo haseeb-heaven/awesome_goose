@@ -1,10 +1,11 @@
 // super_goose: 2D Mario-Style Side-Scrolling Platformer in Goose (gfx + ui + audio).
 //
 // Features:
-//   - Two full side-scrolling tilemap worlds (World 1-1 Meadow & World 1-2 Twilight Castle)
+//   - Four full side-scrolling worlds (1-1 Sunny Meadow, 1-2 Twilight Highlands,
+//     1-3 Sunset Sky Bridges, 1-4 Crimson Fortress) + stage-select hotkeys (1-4)
 //   - Mario-inspired physics: acceleration, friction, coyote time, jump buffer, separate X/Y AABB
 //   - Head-bonk Question Blocks ('?' coins & 'M' Golden Feather power-up to grow Super Goose!)
-//   - Patrolling foes you can stomp from above (+200 + bounce), green warp pipes, flagpole finish
+//   - Patrolling foes you can stomp from above (+200 + bounce), warp pipes, Victory Castle & flagpole
 //   - Pixel-art multi-quad Super Goose hero, parallax clouds & hills, Retina HUD, chiptune SFX
 //   - CLI flags: --test, --demo, --frames N, --screenshot <path>
 
@@ -23,6 +24,7 @@ let VIEW_H: f32 = 540.0;
 let TILE: f32 = 36.0;
 let MAP_W: i64 = 112;
 let MAP_H: i64 = 15;
+let MAX_WORLDS: i64 = 4;
 let MAX_TILES: i64 = 1680;
 let MAX_VERTS: i64 = 16384;
 let MAX_ENEMIES: i64 = 16;
@@ -92,6 +94,7 @@ struct PlatformGame {
     time_s: f32,
     walk_phase: f32,
     won_level: bool,
+    won_game: bool,
     win_timer: f32,
     game_over: bool,
     paused: bool,
@@ -217,8 +220,8 @@ fn load_level(g: PlatformGame&, level_num: i64) {
                 h: 28.0,
             };
         }
-    } else {
-        // World 1-2 Twilight Castle
+    } else if level_num == 2 {
+        // World 1-2 Twilight Highlands
         fill_ground(g, 0, 22);
         fill_ground(g, 25, 48);
         fill_ground(g, 51, 76);
@@ -257,6 +260,114 @@ fn load_level(g: PlatformGame&, level_num: i64) {
                 h: 28.0,
             };
         }
+    } else if level_num == 3 {
+        // World 1-3 Sunset Sky Bridges
+        fill_ground(g, 0, 18);
+        fill_ground(g, 21, 33);
+        fill_ground(g, 36, 49);
+        fill_ground(g, 52, 65);
+        fill_ground(g, 68, 81);
+        fill_ground(g, 84, 111);
+
+        // Opening power-up & coin blocks
+        set_tile(g, 10, 9, 'B'); set_tile(g, 11, 9, 'M'); set_tile(g, 12, 9, '?'); set_tile(g, 13, 9, 'B');
+        set_tile(g, 19, 8, 'C'); set_tile(g, 20, 8, 'C');
+
+        // Elevated bridge + low warp pipe
+        for bx in 24..28 { set_tile(g, bx, 10, 'S'); }
+        set_tile(g, 25, 8, 'C'); set_tile(g, 26, 8, 'C');
+        add_pipe(g, 29, 11);
+        set_tile(g, 34, 8, 'C'); set_tile(g, 35, 8, 'C');
+
+        // Multi-tier sky bridges
+        set_tile(g, 38, 10, 'B'); set_tile(g, 39, 10, '?'); set_tile(g, 40, 10, 'B');
+        for bx in 43..48 { set_tile(g, bx, 7, 'S'); }
+        set_tile(g, 44, 6, 'C'); set_tile(g, 45, 6, 'C'); set_tile(g, 46, 6, 'C');
+        set_tile(g, 50, 8, 'C'); set_tile(g, 51, 8, 'C');
+
+        // Mid bricks & 3-tile pipe at x=60
+        set_tile(g, 55, 9, 'B'); set_tile(g, 56, 9, '?'); set_tile(g, 57, 9, 'B');
+        add_pipe(g, 60, 10);
+        set_tile(g, 66, 8, 'C'); set_tile(g, 67, 8, 'C');
+
+        // High coin span before final staircase
+        for bx in 72..78 { set_tile(g, bx, 9, 'B'); }
+        set_tile(g, 74, 9, '?'); set_tile(g, 75, 9, '?');
+        set_tile(g, 74, 7, 'C'); set_tile(g, 75, 7, 'C');
+        set_tile(g, 82, 8, 'C'); set_tile(g, 83, 8, 'C');
+
+        for step in 6 {
+            var y = 12;
+            while y >= 12 - step {
+                set_tile(g, 87 + step, y, 'S');
+                y--;
+            }
+        }
+        for y in 4..13 { set_tile(g, 99, y, 'F'); }
+        set_tile(g, 99, 12, 'S');
+
+        let exs: f32[9] = [14.0, 24.0, 32.0, 41.0, 47.0, 56.0, 69.0, 75.0, 85.0];
+        for i in 9 {
+            g.enemies[i] = Enemy {
+                alive: true,
+                squish_t: 0.0,
+                x: exs[i] * TILE,
+                y: 12.0 * TILE,
+                vx: -92.0,
+                vy: 0.0,
+                w: 30.0,
+                h: 28.0,
+            };
+        }
+    } else {
+        // World 1-4 Crimson Fortress (lava moats, stone bridges, 3-tile pipes)
+        fill_ground(g, 0, 17);
+        fill_ground(g, 20, 35);
+        fill_ground(g, 38, 53);
+        fill_ground(g, 56, 73);
+        fill_ground(g, 76, 111);
+
+        set_tile(g, 10, 9, 'S'); set_tile(g, 11, 9, 'M'); set_tile(g, 12, 9, '?'); set_tile(g, 13, 9, 'S');
+        set_tile(g, 18, 8, 'C'); set_tile(g, 19, 8, 'C');
+
+        add_pipe(g, 24, 10);
+        set_tile(g, 29, 9, 'S'); set_tile(g, 30, 9, '?'); set_tile(g, 31, 9, '?'); set_tile(g, 32, 9, 'S');
+        set_tile(g, 36, 8, 'C'); set_tile(g, 37, 8, 'C');
+
+        set_tile(g, 41, 9, 'S'); set_tile(g, 42, 9, '?'); set_tile(g, 43, 9, 'S');
+        add_pipe(g, 48, 10);
+
+        // Fortress stone bridge spanning lava moat at x=54..55
+        for bx in 53..59 { set_tile(g, bx, 9, 'S'); }
+        set_tile(g, 55, 7, 'C'); set_tile(g, 56, 7, 'C');
+        set_tile(g, 61, 9, 'B'); set_tile(g, 62, 9, '?'); set_tile(g, 63, 9, 'B');
+        add_pipe(g, 66, 10);
+        set_tile(g, 70, 9, 'S'); set_tile(g, 71, 9, '?'); set_tile(g, 72, 9, 'S');
+        set_tile(g, 74, 8, 'C'); set_tile(g, 75, 8, 'C');
+
+        for step in 6 {
+            var y = 12;
+            while y >= 12 - step {
+                set_tile(g, 87 + step, y, 'S');
+                y--;
+            }
+        }
+        for y in 4..13 { set_tile(g, 99, y, 'F'); }
+        set_tile(g, 99, 12, 'S');
+
+        let exs: f32[10] = [13.0, 21.0, 31.0, 42.0, 44.0, 58.0, 63.0, 71.0, 79.0, 84.0];
+        for i in 10 {
+            g.enemies[i] = Enemy {
+                alive: true,
+                squish_t: 0.0,
+                x: exs[i] * TILE,
+                y: 12.0 * TILE,
+                vx: -98.0,
+                vy: 0.0,
+                w: 30.0,
+                h: 28.0,
+            };
+        }
     }
 
     g.px = 3.0 * TILE;
@@ -270,6 +381,7 @@ fn load_level(g: PlatformGame&, level_num: i64) {
     g.cam_x = 0.0;
     g.time_left = 180.0;
     g.won_level = false;
+    g.won_game = false;
     g.win_timer = 0.0;
 }
 
@@ -300,6 +412,7 @@ fn new_platform(seed: u64) -> PlatformGame {
         time_s: 0.0,
         walk_phase: 0.0,
         won_level: false,
+        won_game: false,
         win_timer: 0.0,
         game_over: false,
         paused: false,
@@ -438,8 +551,11 @@ fn step_platform(g: PlatformGame&, dt: f32, move_in: f32, jump_pressed: bool,
     if g.won_level {
         g.win_timer -= dt;
         if g.win_timer <= 0.0 {
-            let next_w = if g.world_num == 1 { 2 } else { 1 };
-            load_level(g, next_w);
+            if !g.won_game {
+                load_level(g, g.world_num + 1);
+            } else if demo_ai {
+                load_level(g, 1);
+            }
         }
         return;
     }
@@ -560,8 +676,14 @@ fn step_platform(g: PlatformGame&, dt: f32, move_in: f32, jump_pressed: bool,
                 spawn_parts(g, tx * TILE + 18.0, ty * TILE + 18.0, [255, 220, 70, 255], 6);
             } else if ch == 'F' && !g.won_level {
                 g.won_level = true;
-                g.win_timer = 1.8;
-                g.score += 1000 + (g.time_left as i64) * 5;
+                if g.world_num >= MAX_WORLDS {
+                    g.won_game = true;
+                    g.win_timer = 2.5;
+                    g.score += 2500 + (g.time_left as i64) * 5;
+                } else {
+                    g.win_timer = 1.8;
+                    g.score += 1000 + (g.time_left as i64) * 5;
+                }
                 g.sfx_clear = true;
                 spawn_parts(g, tx * TILE + 18.0, g.py, [100, 255, 160, 255], 20);
             }
@@ -685,19 +807,35 @@ fn push_quad(verts: Vertex2D[>..]&, x: f32, y: f32, w: f32, h: f32, col: u8[4]) 
 fn render_platform(g: const PlatformGame&, verts: Vertex2D[>..]&) {
     verts.clear();
 
-    // 1. Sky gradient (Sunny blue for World 1-1, Dusk violet for World 1-2)
+    // 1. Sky gradient across all 4 worlds
     if g.world_num == 1 {
         push_quad(verts, 0.0, 0.0, VIEW_W, 200.0, [68, 146, 236, 255]);
         push_quad(verts, 0.0, 200.0, VIEW_W, 180.0, [108, 182, 248, 255]);
         push_quad(verts, 0.0, 380.0, VIEW_W, 160.0, [148, 212, 254, 255]);
-    } else {
+    } else if g.world_num == 2 {
         push_quad(verts, 0.0, 0.0, VIEW_W, 200.0, [24, 22, 54, 255]);
         push_quad(verts, 0.0, 200.0, VIEW_W, 180.0, [48, 36, 86, 255]);
         push_quad(verts, 0.0, 380.0, VIEW_W, 160.0, [86, 48, 98, 255]);
+    } else if g.world_num == 3 {
+        push_quad(verts, 0.0, 0.0, VIEW_W, 200.0, [156, 62, 86, 255]);
+        push_quad(verts, 0.0, 200.0, VIEW_W, 180.0, [218, 114, 72, 255]);
+        push_quad(verts, 0.0, 380.0, VIEW_W, 160.0, [248, 176, 94, 255]);
+    } else {
+        push_quad(verts, 0.0, 0.0, VIEW_W, 200.0, [36, 12, 22, 255]);
+        push_quad(verts, 0.0, 200.0, VIEW_W, 180.0, [74, 20, 28, 255]);
+        push_quad(verts, 0.0, 380.0, VIEW_W, 160.0, [118, 32, 26, 255]);
     }
 
     // 2. Parallax clouds & rolling hills
-    let cloud_c: u8[4] = if g.world_num == 1 { [248, 252, 255, 235] } else { [125, 110, 165, 160] };
+    let cloud_c: u8[4] = if g.world_num == 1 {
+        [248, 252, 255, 235]
+    } else if g.world_num == 2 {
+        [125, 110, 165, 160]
+    } else if g.world_num == 3 {
+        [255, 224, 186, 200]
+    } else {
+        [110, 72, 82, 145]
+    };
     for c in 8 {
         let cx = c * 320.0 - g.cam_x * 0.3 + 60.0;
         let cy = 78.0 + (c % 3) * 34.0;
@@ -707,8 +845,24 @@ fn render_platform(g: const PlatformGame&, verts: Vertex2D[>..]&) {
         }
     }
 
-    let hill_c: u8[4] = if g.world_num == 1 { [72, 168, 92, 255] } else { [42, 72, 78, 255] };
-    let hill_hi: u8[4] = if g.world_num == 1 { [96, 196, 112, 255] } else { [58, 96, 102, 255] };
+    let hill_c: u8[4] = if g.world_num == 1 {
+        [72, 168, 92, 255]
+    } else if g.world_num == 2 {
+        [42, 72, 78, 255]
+    } else if g.world_num == 3 {
+        [114, 96, 62, 255]
+    } else {
+        [48, 26, 36, 255]
+    };
+    let hill_hi: u8[4] = if g.world_num == 1 {
+        [96, 196, 112, 255]
+    } else if g.world_num == 2 {
+        [58, 96, 102, 255]
+    } else if g.world_num == 3 {
+        [142, 120, 76, 255]
+    } else {
+        [72, 36, 48, 255]
+    };
     for h in 9 {
         let hx = h * 260.0 - g.cam_x * 0.5 - 20.0;
         if hx > -220.0 && hx < VIEW_W + 40.0 {
@@ -716,6 +870,33 @@ fn render_platform(g: const PlatformGame&, verts: Vertex2D[>..]&) {
             push_quad(verts, hx, 13.0 * TILE - hh, 160.0, hh, hill_c);
             push_quad(verts, hx + 26.0, 13.0 * TILE - hh - 22.0, 108.0, 26.0, hill_hi);
         }
+    }
+
+    // Animated magma floor in World 1-4 (drawn behind tiles so solid floor hides it)
+    if g.world_num == 4 {
+        let glow = (sin(g.time_s * 4.5) * 18.0) as i64;
+        let lava_r = clamp(235 + glow, 200, 255) as u8;
+        let lava_g = clamp(72 + glow, 40, 130) as u8;
+        push_quad(verts, 0.0, 13.75 * TILE, VIEW_W, 1.25 * TILE, [lava_r, lava_g, 20, 255]);
+        push_quad(verts, 0.0, 13.75 * TILE, VIEW_W, 6.0, [255, 205, 65, 255]);
+    }
+
+    // End-stage Victory Castle behind Flagpole
+    let flag_tx: f32 = if g.world_num == 1 { 98.0 } else { 99.0 };
+    let castle_x = (flag_tx + 3.0) * TILE - g.cam_x;
+    if castle_x < VIEW_W + 40.0 && castle_x > -200.0 {
+        let cy = 9.0 * TILE;
+        let cw: f32 = 144.0;
+        let ch: f32 = 4.0 * TILE;
+        push_quad(verts, castle_x, cy, cw, ch, [132, 138, 156, 255]);
+        push_quad(verts, castle_x + 28.0, cy - 32.0, 88.0, 32.0, [148, 154, 174, 255]);
+        // Battlements
+        for b in 5 {
+            push_quad(verts, castle_x + b * 30.0 + 4.0, cy - 12.0, 18.0, 12.0, [168, 174, 194, 255]);
+        }
+        // Arched fortress gate
+        push_quad(verts, castle_x + 52.0, cy + ch - 62.0, 40.0, 62.0, [28, 22, 34, 255]);
+        push_quad(verts, castle_x + 58.0, cy + ch - 70.0, 28.0, 10.0, [28, 22, 34, 255]);
     }
 
     // 3. Visible tilemap
@@ -731,12 +912,31 @@ fn render_platform(g: const PlatformGame&, verts: Vertex2D[>..]&) {
                 let bump_y = -sin(g.bump[idx] * PI) * 10.0;
                 let sy = ty * TILE + bump_y;
                 if ch == 'G' {
-                    push_quad(verts, sx, sy, TILE, TILE, [138, 86, 48, 255]);
-                    push_quad(verts, sx, sy, TILE, 10.0, [56, 186, 72, 255]);
-                    push_quad(verts, sx, sy, TILE, 4.0, [110, 224, 114, 255]);
+                    if g.world_num == 4 {
+                        push_quad(verts, sx, sy, TILE, TILE, [58, 56, 68, 255]);
+                        push_quad(verts, sx, sy, TILE, 10.0, [92, 96, 114, 255]);
+                        push_quad(verts, sx, sy, TILE, 4.0, [136, 142, 166, 255]);
+                    } else if g.world_num == 3 {
+                        push_quad(verts, sx, sy, TILE, TILE, [136, 82, 46, 255]);
+                        push_quad(verts, sx, sy, TILE, 10.0, [196, 154, 48, 255]);
+                        push_quad(verts, sx, sy, TILE, 4.0, [238, 198, 86, 255]);
+                    } else if g.world_num == 2 {
+                        push_quad(verts, sx, sy, TILE, TILE, [94, 62, 48, 255]);
+                        push_quad(verts, sx, sy, TILE, 10.0, [46, 152, 92, 255]);
+                        push_quad(verts, sx, sy, TILE, 4.0, [86, 196, 134, 255]);
+                    } else {
+                        push_quad(verts, sx, sy, TILE, TILE, [138, 86, 48, 255]);
+                        push_quad(verts, sx, sy, TILE, 10.0, [56, 186, 72, 255]);
+                        push_quad(verts, sx, sy, TILE, 4.0, [110, 224, 114, 255]);
+                    }
                 } else if ch == 'D' {
-                    push_quad(verts, sx, sy, TILE, TILE, [114, 68, 38, 255]);
-                    push_quad(verts, sx + 6.0, sy + 8.0, 8.0, 8.0, [94, 54, 28, 255]);
+                    if g.world_num == 4 {
+                        push_quad(verts, sx, sy, TILE, TILE, [44, 42, 54, 255]);
+                        push_quad(verts, sx + 6.0, sy + 8.0, 8.0, 8.0, [32, 30, 40, 255]);
+                    } else {
+                        push_quad(verts, sx, sy, TILE, TILE, [114, 68, 38, 255]);
+                        push_quad(verts, sx + 6.0, sy + 8.0, 8.0, 8.0, [94, 54, 28, 255]);
+                    }
                 } else if ch == 'B' {
                     push_quad(verts, sx, sy, TILE, TILE, [196, 92, 52, 255]);
                     push_quad(verts, sx, sy + 16.0, TILE, 3.0, [95, 42, 24, 255]);
@@ -927,23 +1127,74 @@ fn run_tests() {
     }
     check(start_y - min_y >= 3.8 * TILE, "standing jump apex must easily clear 3-tile pipe");
 
-    // Test World 1-2 pipe at x=38 is clearable with standard running jump
-    var g4 = new_platform(5);
-    load_level(g4, 2);
-    g4.px = 36.0 * TILE;
-    for f in 90 {
-        if g4.px > 40.2 * TILE { break; }
-        let want_j = g4.on_ground;
-        step_platform(g4, 1.0 / 60.0, 1.0, want_j, true, false);
+    // Validate all 4 worlds: spawn ground, flagpole, pipe height <= 3 tiles, pit width <= 2 tiles
+    for w in 1..5 {
+        var gw = new_platform((w * 11) as! u64);
+        load_level(gw, w);
+        check(gw.world_num == w, "world_num mismatch");
+        check(tile_at(gw, 3, 13) == 'G', "spawn ground missing");
+
+        var has_flag = false;
+        var pit_run: i64 = 0;
+        var max_pit: i64 = 0;
+        var min_pipe_top: i64 = 99;
+        for tx in 98 {
+            if tile_at(gw, tx, 13) == '.' {
+                pit_run++;
+                if pit_run > max_pit { max_pit = pit_run; }
+            } else {
+                pit_run = 0;
+            }
+            for ty in MAP_H {
+                let ch = tile_at(gw, tx, ty);
+                if ch == '[' && ty < min_pipe_top { min_pipe_top = ty; }
+            }
+        }
+        for tx in 96..102 {
+            if tile_at(gw, tx, 6) == 'F' { has_flag = true; }
+        }
+        check(has_flag, "flagpole missing near end of stage");
+        check(min_pipe_top >= 10, "pipe taller than 3 tiles in stage");
+        check(max_pit <= 3, "contiguous pit too wide to clear safely");
+
+        var vtmp: Vertex2D[>..] = [];
+        render_platform(gw, vtmp);
+        check(vtmp.len > 300 && vtmp.len <= MAX_VERTS, "world render batch invalid");
     }
-    check(g4.px > 40.2 * TILE && !g4.game_over && g4.lives == 3,
-          "hero must clear World 1-2 pipe at x=38 cleanly");
 
-    var verts: Vertex2D[>..] = [];
-    render_platform(g2, verts);
-    check(verts.len > 300 && verts.len <= MAX_VERTS, "super_goose vertex batch invalid");
+    // Test running jump pipe clearance on Worlds 1-2 (x=38), 1-3 (x=60), and 1-4 (x=48)
+    let pipe_worlds: i64[3] = [2, 3, 4];
+    let pipe_starts: f32[3] = [36.0, 58.0, 46.0];
+    let pipe_goals: f32[3] = [40.2, 62.2, 50.2];
+    for k in 3 {
+        var gp = new_platform((5 + k) as! u64);
+        load_level(gp, pipe_worlds[k]);
+        for ei in MAX_ENEMIES { gp.enemies[ei].alive = false; }
+        gp.px = pipe_starts[k] * TILE;
+        for f in 90 {
+            if gp.px > pipe_goals[k] * TILE { break; }
+            let want_j = gp.on_ground;
+            step_platform(gp, 1.0 / 60.0, 1.0, want_j, true, false);
+        }
+        check(gp.px > pipe_goals[k] * TILE && !gp.game_over && gp.lives == 3,
+              "hero must clear pipe cleanly in all worlds");
+    }
 
-    print("PASS super_goose (tile collision, coyote jump, 1-2 pipe jump, ?-block bonk, stomp physics, GPU batching)\n");
+    // Test progression 1 -> 2 -> 3 -> 4 -> won_game == true
+    var gprog = new_platform(99);
+    for w in 1..5 {
+        check(gprog.world_num == w && !gprog.won_game, "expected sequential world number");
+        let ftx = if w == 1 { 98.0 } else { 99.0 };
+        gprog.px = ftx * TILE - 12.0;
+        gprog.py = 11.0 * TILE;
+        gprog.vx = 120.0;
+        step_platform(gprog, 0.05, 1.0, false, false, false);
+        check(gprog.won_level, "flagpole must mark stage won");
+        for _ in 40 { step_platform(gprog, 0.1, 0.0, false, false, false); }
+    }
+    check(gprog.won_game, "completing World 1-4 must set won_game = true");
+
+    print("PASS super_goose (4 worlds 1-1..1-4, coyote jump, pipe clearance, ?-block bonk, stomp physics, GPU batching)\n");
 }
 
 fn main() {
@@ -1061,8 +1312,12 @@ fn main() {
 
     while gfx::frame() {
         if gfx::key_pressed("Escape") { break; }
-        if gfx::key_pressed("P") && !game.game_over { game.paused = !game.paused; }
+        if gfx::key_pressed("P") && !game.game_over && !game.won_level { game.paused = !game.paused; }
         if gfx::key_pressed("R") { game = new_platform(random_seed()); }
+        if gfx::key_pressed("1") { load_level(game, 1); game.game_over = false; }
+        if gfx::key_pressed("2") { load_level(game, 2); game.game_over = false; }
+        if gfx::key_pressed("3") { load_level(game, 3); game.game_over = false; }
+        if gfx::key_pressed("4") { load_level(game, 4); game.game_over = false; }
 
         var move_x: f32 = 0.0;
         if gfx::key_down("Left") || gfx::key_down("A") { move_x -= 1.0; }
@@ -1070,7 +1325,7 @@ fn main() {
         let jump_p = gfx::key_pressed("Space") || gfx::key_pressed("W") || gfx::key_pressed("Up");
         let jump_h = gfx::key_down("Space") || gfx::key_down("W") || gfx::key_down("Up");
 
-        if game.game_over && jump_p {
+        if (game.game_over || game.won_game) && jump_p {
             game = new_platform(random_seed());
         }
 
@@ -1105,12 +1360,14 @@ fn main() {
                 ui::layout_row_dynamic(ctx, 180.0, 1);
                 ui::spacer(ctx);
                 ui::layout_row_dynamic(ctx, 36.0, 1);
-                let msg = if game.won_level {
-                    str("COURSE CLEAR! Advancing to next world...")
+                let msg: u8[>..] = if game.won_game {
+                    str("VICTORY! ALL 4 WORLDS CLEARED! Press SPACE or R to Play Again")
+                } else if game.won_level {
+                    str("WORLD 1-", game.world_num, " CLEAR! Advancing to World 1-", game.world_num + 1, "...")
                 } else if game.game_over {
-                    str("GAME OVER — Press SPACE or R to Restart")
+                    str("GAME OVER - Press SPACE or R to Restart")
                 } else {
-                    str("PAUSED — Press P to Resume")
+                    str("PAUSED - Press P to Resume")
                 };
                 ui::label_colored(ctx, msg, ui::TEXT_CENTERED, ui::rgb(255, 250, 210));
             }

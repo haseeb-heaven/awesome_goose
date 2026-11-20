@@ -2,7 +2,7 @@
 
 <p align="center">
   <img alt="Language: Goose" src="https://img.shields.io/badge/language-Goose%20v2026.4-F28C28?style=flat-square">
-  <img alt="Release: v2.1.0" src="https://img.shields.io/badge/release-v2.1.0-3B82F6?style=flat-square">
+  <img alt="Release: v2.2.0" src="https://img.shields.io/badge/release-v2.2.0-3B82F6?style=flat-square">
   <img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-10B981?style=flat-square">
   <img alt="Apps: 12 Verified" src="https://img.shields.io/badge/apps-12%20verified-8B5CF6?style=flat-square">
 </p>
@@ -214,14 +214,14 @@ A high-speed synthwave rooftop endless runner with procedural skyline parallax, 
 
 ### 11. Super Goose Bros (2D Platformer)
 
-A classic Mario-style 2D side-scrolling platformer starring an armored red-capped Goose! Hop across grass platforms, warp pipes, and brick clusters, bonk `?` blocks for coins and Golden Feather power-ups, stomp patrolling mushroom foes, and reach the castle flagpole.
+A classic Mario-style 2D side-scrolling platformer starring an armored red-capped Goose across **4 complete worlds (`1-1` through `1-4`)**! Hop across meadowlands, twilight pipes, sunset sky bridges, and crimson fortress lava moats, bonk `?` blocks for coins and Golden Feather power-ups, stomp patrolling foes, and conquer every Victory Castle flagpole.
 
 <p align="center">
   <img src="screenshots/super_goose.png" alt="Super Goose Bros Platformer Screenshot" width="720">
 </p>
 
-- **Features**: Smooth horizontal acceleration + coyote-time jumping, Mario-style `?` blocks & breakable bricks, Golden Feather power-up (extra hit + heroic cape/crown visuals), patrolling cliff-aware enemies with squash animation, scrolling parallax hills & warp pipes, 200-second stage timer, and retro synthesized SFX.
-- **Controls**: `A`/`D` or `Left`/`Right` run · `Space`/`W`/`Up` jump · `R` restart · `Esc` quit.
+- **Features**: **4 full playable worlds** (`1-1 Sunny Meadow`, `1-2 Twilight Highlands`, `1-3 Sunset Sky Bridges`, `1-4 Crimson Fortress` with animated lava moats & Victory Castle), smooth horizontal acceleration + coyote-time jumping, `?` blocks & breakable bricks, Golden Feather power-up (extra hit + heroic cape/crown visuals), patrolling cliff-aware enemies with squash animation, 4 distinct parallax palettes, 180-second stage timer, and retro synthesized SFX.
+- **Controls**: `A`/`D` or `Left`/`Right` run · `Space`/`W`/`Up` jump · `1`–`4` jump to World `1-1`–`1-4` · `R` restart · `Esc` quit.
 - **Run**:
   ```sh
   ./builds/super_goose
@@ -251,18 +251,18 @@ A 3D endless cyber-highway runner written with custom GLSL vertex/fragment shade
 Prebuilt native executables and checksums are published on the [**Releases Page**](https://github.com/haseeb-heaven/heaven_goose/releases):
 
 - **Latest Release**: [`github.com/haseeb-heaven/heaven_goose/releases/latest`](https://github.com/haseeb-heaven/heaven_goose/releases/latest)
-- **v2.1.0 Release**: [`github.com/haseeb-heaven/heaven_goose/releases/tag/v2.1.0`](https://github.com/haseeb-heaven/heaven_goose/releases/tag/v2.1.0)
+- **v2.2.0 Release**: [`github.com/haseeb-heaven/heaven_goose/releases/tag/v2.2.0`](https://github.com/haseeb-heaven/heaven_goose/releases/tag/v2.2.0)
 
-Available assets in `v2.1.0`:
-- **`heaven_goose-v2.1.0-macos-arm64.tar.gz`** — Archive with all 12 compiled apps + `LICENSE` + `README.md`
+Available assets in `v2.2.0`:
+- **`heaven_goose-v2.2.0-macos-arm64.tar.gz`** — Archive with all 12 compiled apps + `LICENSE` + `README.md`
 - Individual executables: `calculator-macos-arm64`, `pomodoro-macos-arm64`, `e_journal-macos-arm64`, `pixel_studio-macos-arm64`, `devbox-macos-arm64`, `sysbench-macos-arm64`, `sysmon-macos-arm64`, `term_snake-macos-arm64`, `neon_breakout-macos-arm64`, `sky_dash-macos-arm64`, `super_goose-macos-arm64`, `voxel_runner-macos-arm64`
 - **`SHA256SUMS.txt`** — SHA-256 verification checksums
 
 ### Running Downloaded Binaries on macOS
 
 ```sh
-tar -xzf heaven_goose-v2.1.0-macos-arm64.tar.gz
-cd heaven_goose-v2.1.0-macos-arm64
+tar -xzf heaven_goose-v2.2.0-macos-arm64.tar.gz
+cd heaven_goose-v2.2.0-macos-arm64
 chmod +x *
 # Optional if downloaded via browser and Gatekeeper flags quarantine:
 xattr -d com.apple.quarantine * 2>/dev/null || true
