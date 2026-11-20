@@ -2,12 +2,12 @@
 
 <p align="center">
   <img alt="Language: Goose" src="https://img.shields.io/badge/language-Goose%20v2026.4-F28C28?style=flat-square">
-  <img alt="Release: v1.0.0" src="https://img.shields.io/badge/release-v1.0.0-3B82F6?style=flat-square">
+  <img alt="Release: v2.0.0" src="https://img.shields.io/badge/release-v2.0.0-3B82F6?style=flat-square">
   <img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-10B981?style=flat-square">
-  <img alt="Apps: 7 Verified" src="https://img.shields.io/badge/apps-7%20verified-8B5CF6?style=flat-square">
+  <img alt="Apps: 11 Verified" src="https://img.shields.io/badge/apps-11%20verified-8B5CF6?style=flat-square">
 </p>
 
-A curated, tested, and optimized collection of **7 standalone applications and games** written in the [**Goose**](https://github.com/aardappel/goose) systems programming language — spanning **Desktop GUI**, **CLI Utilities**, **2D Terminal UI (Console)**, **2D GPU Arcade**, and **3D GPU Graphics**.
+A curated, tested, and optimized collection of **11 standalone applications and games** written in the [**Goose**](https://github.com/aardappel/goose) systems programming language — spanning **Desktop GUI Apps**, **CLI Utilities**, **2D Terminal UI (Console)**, **2D GPU Arcade / Runner / Platformer**, and **3D GPU Graphics**.
 
 > Separate directories for clean source code ([`src/`](src/)) and compiled executables ([`builds/`](builds/)), with reproducible test suites, headless screenshot generation, and prebuilt binaries attached on [GitHub Releases](https://github.com/haseeb-heaven/heaven_goose/releases).
 
@@ -19,11 +19,15 @@ A curated, tested, and optimized collection of **7 standalone applications and g
 |---|---|---|---|---|
 | [**Calculator**](#1-calculator-gui) | Desktop GUI | `gfx`, `ui` (`goose_gfx`) | [`src/gui/calculator/calculator.goose`](src/gui/calculator/calculator.goose) | `builds/calculator` |
 | [**Pomodoro**](#2-pomodoro-gui) | Desktop GUI + Audio | `gfx`, `ui`, `audio` (`goose_gfx`) | [`src/gui/pomodoro/pomodoro.goose`](src/gui/pomodoro/pomodoro.goose) | `builds/pomodoro` |
-| [**DevBox**](#3-devbox-cli) | CLI Toolkit | `std`, `os`, `base64`, [`goose-uuid`](https://github.com/Macho0x/goose-uuid) | [`src/cli/devbox/devbox.goose`](src/cli/devbox/devbox.goose) | `builds/devbox` |
-| [**SysBench**](#4-sysbench-cli) | CLI Benchmark | `std`, `os`, `math` | [`src/cli/sysbench/sysbench.goose`](src/cli/sysbench/sysbench.goose) | `builds/sysbench` |
-| [**Term Snake**](#5-term-snake-2d-console-game) | 2D Console (TUI) | `std`, `os`, `math`, [`goose-tui`](https://github.com/ZHENGSY/goose-tui) | [`src/console/term_snake/term_snake.goose`](src/console/term_snake/term_snake.goose) | `builds/term_snake` |
-| [**Neon Breakout**](#6-neon-breakout-2d-gpu-game) | 2D GPU Game | `gfx`, `ui`, `audio`, `vec`, `math` | [`src/games2d/neon_breakout/neon_breakout.goose`](src/games2d/neon_breakout/neon_breakout.goose) | `builds/neon_breakout` |
-| [**Voxel Runner**](#7-voxel-runner-3d-gpu-game) | 3D GPU Game | `gfx`, `ui`, `audio`, `vec`, `math` | [`src/games3d/voxel_runner/voxel_runner.goose`](src/games3d/voxel_runner/voxel_runner.goose) | `builds/voxel_runner` |
+| [**E-Journal**](#3-e-journal-gui) | Desktop GUI App | `gfx`, `ui`, `json`, `os`, [`goose-date`](https://github.com/clintecker/goose-date) | [`src/gui/e_journal/e_journal.goose`](src/gui/e_journal/e_journal.goose) | `builds/e_journal` |
+| [**Pixel Studio**](#4-pixel-studio-gui) | Desktop GUI Editor | `gfx`, `ui`, `os`, `std` | [`src/gui/pixel_studio/pixel_studio.goose`](src/gui/pixel_studio/pixel_studio.goose) | `builds/pixel_studio` |
+| [**DevBox**](#5-devbox-cli) | CLI Toolkit | `std`, `os`, `base64`, [`goose-uuid`](https://github.com/Macho0x/goose-uuid) | [`src/cli/devbox/devbox.goose`](src/cli/devbox/devbox.goose) | `builds/devbox` |
+| [**SysBench**](#6-sysbench-cli) | CLI Benchmark | `std`, `os`, `math` | [`src/cli/sysbench/sysbench.goose`](src/cli/sysbench/sysbench.goose) | `builds/sysbench` |
+| [**Term Snake**](#7-term-snake-2d-console-game) | 2D Console (TUI) | `std`, `os`, `math`, [`goose-tui`](https://github.com/ZHENGSY/goose-tui) | [`src/console/term_snake/term_snake.goose`](src/console/term_snake/term_snake.goose) | `builds/term_snake` |
+| [**Neon Breakout**](#8-neon-breakout-2d-gpu-game) | 2D GPU Arcade | `gfx`, `ui`, `audio`, `vec`, `math` | [`src/games2d/neon_breakout/neon_breakout.goose`](src/games2d/neon_breakout/neon_breakout.goose) | `builds/neon_breakout` |
+| [**Sky Dash**](#9-sky-dash-2d-endless-runner) | 2D GPU Endless Runner | `gfx`, `ui`, `audio`, `vec`, `math` | [`src/games2d/sky_dash/sky_dash.goose`](src/games2d/sky_dash/sky_dash.goose) | `builds/sky_dash` |
+| [**Super Goose Bros**](#10-super-goose-bros-2d-platformer) | 2D GPU Platformer | `gfx`, `ui`, `audio`, `vec`, `math` | [`src/games2d/super_goose/super_goose.goose`](src/games2d/super_goose/super_goose.goose) | `builds/super_goose` |
+| [**Voxel Runner**](#11-voxel-runner-3d-gpu-game) | 3D GPU Game | `gfx`, `ui`, `audio`, `vec`, `math` | [`src/games3d/voxel_runner/voxel_runner.goose`](src/games3d/voxel_runner/voxel_runner.goose) | `builds/voxel_runner` |
 
 ---
 
@@ -61,7 +65,40 @@ A focus timer and stopwatch with a smooth custom canvas progress ring, mode swit
 
 ---
 
-### 3. DevBox (CLI)
+### 3. E-Journal (GUI)
+
+A local-first, calm desktop notebook and journaling application inspired by [**`haseeb-heaven/e-journal`**](https://github.com/haseeb-heaven/e-journal), featuring four switchable palettes (**Warm**, **Dark**, **Slate**, **Forest**), full-text search, tag chips, revision tracking, and atomic JSON snapshot persistence.
+
+<p align="center">
+  <img src="screenshots/e_journal.png" alt="Goose E-Journal Screenshot" width="760">
+</p>
+
+- **Features**: Split-pane notebook workspace, live search + deduplicated clickable tag filter pills, word/character counter, unsaved/saved indicator, UTC timestamps via [`goose-date`](https://github.com/clintecker/goose-date), safe double-click Delete confirmation, Duplicate entry, Settings view, and atomic JSON backup export/import (`e_journal_backup.json`).
+- **Run**:
+  ```sh
+  ./builds/e_journal
+  ./builds/e_journal --theme slate
+  ```
+
+---
+
+### 4. Pixel Studio (GUI)
+
+A standalone pixel-art sprite editor with crisp live canvas zooming, 16-swatch palette + custom RGB sliders, live 1:1 preview thumbnail, multi-step undo/redo history, and instant binary **PPM (`P6`)** sprite export.
+
+<p align="center">
+  <img src="screenshots/pixel_studio.png" alt="Goose Pixel Studio Screenshot" width="760">
+</p>
+
+- **Features**: Switchable **16×16** / **24×24** pixel grid, **Brush** (`1px` / `2px`), **Eraser**, iterative scanline **Fill Bucket**, **Eyedropper**, optional horizontal **Mirror X** symmetry, 32-level **Undo / Redo**, gridline toggle, built-in Goose mascot preset, right-click quick erase, and `goose_sprite.ppm` export.
+- **Run**:
+  ```sh
+  ./builds/pixel_studio
+  ```
+
+---
+
+### 5. DevBox (CLI)
 
 A fast, zero-dependency developer Swiss-army CLI combining Goose's stdlib (`base64`, `os`, `hash`) with [`Macho0x/goose-uuid`](https://github.com/Macho0x/goose-uuid) from [`goose-index`](https://github.com/safdafang/goose-index).
 
@@ -83,7 +120,7 @@ A fast, zero-dependency developer Swiss-army CLI combining Goose's stdlib (`base
 
 ---
 
-### 4. SysBench (CLI)
+### 6. SysBench (CLI)
 
 A native CPU & memory micro-benchmark suite demonstrating Goose's `-O2` compiled performance with self-verifying mathematical invariants and proportional ANSI bar charts.
 
@@ -105,7 +142,7 @@ A native CPU & memory micro-benchmark suite demonstrating Goose's `-O2` compiled
 
 ---
 
-### 5. Term Snake (2D Console Game)
+### 7. Term Snake (2D Console Game)
 
 A 24-bit TrueColor 2D terminal arcade Snake game built on [`ZHENGSY/goose-tui`](https://github.com/ZHENGSY/goose-tui), using cell-level ANSI diffing so idle frames emit zero bytes.
 
@@ -122,7 +159,7 @@ A 24-bit TrueColor 2D terminal arcade Snake game built on [`ZHENGSY/goose-tui`](
 
 ---
 
-### 6. Neon Breakout (2D GPU Game)
+### 8. Neon Breakout (2D GPU Game)
 
 A custom-shader 2D GPU arcade game batching all bricks, walls, paddle, motion trail, and impact sparks into a single vertex buffer draw call per frame, paired with a Retina HUD and procedural PCM sound effects.
 
@@ -139,7 +176,41 @@ A custom-shader 2D GPU arcade game batching all bricks, walls, paddle, motion tr
 
 ---
 
-### 7. Voxel Runner (3D GPU Game)
+### 9. Sky Dash (2D Endless Runner)
+
+A high-speed synthwave rooftop endless runner with procedural skyline parallax, responsive double-jump & fast-slide physics, flying patrol drones, laser barriers, energy shields, and glowing coin arcs.
+
+<p align="center">
+  <img src="screenshots/sky_dash.png" alt="Sky Dash Endless Runner Screenshot" width="720">
+</p>
+
+- **Features**: Striped outrun sun & multi-layer parallax skyline, procedural rooftop gaps at escalating speed, double-jump + fast-fall/duck (`S`/`Down`), cyan energy shield absorption, particle coin trails, best-score tracking, and procedural audio cues.
+- **Controls**: `Space`/`W`/`Up` jump & double-jump · `S`/`Down` slide / fast-drop · `P` pause · `R` restart · `Esc` quit.
+- **Run**:
+  ```sh
+  ./builds/sky_dash
+  ```
+
+---
+
+### 10. Super Goose Bros (2D Platformer)
+
+A classic Mario-style 2D side-scrolling platformer starring an armored red-capped Goose! Hop across grass platforms, warp pipes, and brick clusters, bonk `?` blocks for coins and Golden Feather power-ups, stomp patrolling mushroom foes, and reach the castle flagpole.
+
+<p align="center">
+  <img src="screenshots/super_goose.png" alt="Super Goose Bros Platformer Screenshot" width="720">
+</p>
+
+- **Features**: Smooth horizontal acceleration + coyote-time jumping, Mario-style `?` blocks & breakable bricks, Golden Feather power-up (extra hit + heroic cape/crown visuals), patrolling cliff-aware enemies with squash animation, scrolling parallax hills & warp pipes, 200-second stage timer, and retro synthesized SFX.
+- **Controls**: `A`/`D` or `Left`/`Right` run · `Space`/`W`/`Up` jump · `R` restart · `Esc` quit.
+- **Run**:
+  ```sh
+  ./builds/super_goose
+  ```
+
+---
+
+### 11. Voxel Runner (3D GPU Game)
 
 A 3D endless cyber-highway runner written with custom GLSL vertex/fragment shaders (compiled to Metal / SPIR-V / HLSL), depth testing, directional + hemisphere lighting, and exponential horizon fog.
 
@@ -161,23 +232,23 @@ A 3D endless cyber-highway runner written with custom GLSL vertex/fragment shade
 Prebuilt native executables and checksums are published on the [**Releases Page**](https://github.com/haseeb-heaven/heaven_goose/releases):
 
 - **Latest Release**: [`github.com/haseeb-heaven/heaven_goose/releases/latest`](https://github.com/haseeb-heaven/heaven_goose/releases/latest)
-- **v1.0.0 Release**: [`github.com/haseeb-heaven/heaven_goose/releases/tag/v1.0.0`](https://github.com/haseeb-heaven/heaven_goose/releases/tag/v1.0.0)
+- **v2.0.0 Release**: [`github.com/haseeb-heaven/heaven_goose/releases/tag/v2.0.0`](https://github.com/haseeb-heaven/heaven_goose/releases/tag/v2.0.0)
 
-Available assets in `v1.0.0`:
-- **`heaven_goose-v1.0.0-macos-arm64.tar.gz`** — Archive with all 7 compiled apps + `LICENSE` + `README.md`
-- Individual executables: `calculator-macos-arm64`, `pomodoro-macos-arm64`, `devbox-macos-arm64`, `sysbench-macos-arm64`, `term_snake-macos-arm64`, `neon_breakout-macos-arm64`, `voxel_runner-macos-arm64`
+Available assets in `v2.0.0`:
+- **`heaven_goose-v2.0.0-macos-arm64.tar.gz`** — Archive with all 11 compiled apps + `LICENSE` + `README.md`
+- Individual executables: `calculator-macos-arm64`, `pomodoro-macos-arm64`, `e_journal-macos-arm64`, `pixel_studio-macos-arm64`, `devbox-macos-arm64`, `sysbench-macos-arm64`, `term_snake-macos-arm64`, `neon_breakout-macos-arm64`, `sky_dash-macos-arm64`, `super_goose-macos-arm64`, `voxel_runner-macos-arm64`
 - **`SHA256SUMS.txt`** — SHA-256 verification checksums
 
 ### Running Downloaded Binaries on macOS
 
 ```sh
-tar -xzf heaven_goose-v1.0.0-macos-arm64.tar.gz
-cd heaven_goose-v1.0.0-macos-arm64
+tar -xzf heaven_goose-v2.0.0-macos-arm64.tar.gz
+cd heaven_goose-v2.0.0-macos-arm64
 chmod +x *
 # Optional if downloaded via browser and Gatekeeper flags quarantine:
 xattr -d com.apple.quarantine * 2>/dev/null || true
 
-./calculator
+./e_journal
 ```
 
 To verify checksums before running:
@@ -203,7 +274,7 @@ shasum -a 256 -c SHA256SUMS.txt
 
 ### macOS (Apple Silicon / Intel) & Linux (`x86_64` / `arm64`)
 
-Build all 7 apps into `builds/`:
+Build all 11 apps into `builds/`:
 ```sh
 ./scripts/build_all.sh
 ```
@@ -215,11 +286,11 @@ Run all typechecks, unit tests (`--test`), CLI checks, and headless GPU smoke te
 
 Build and run a single app manually:
 ```sh
-goose build -O2 src/gui/calculator/calculator.goose -o builds/calculator
-./builds/calculator
+goose build -O2 src/gui/e_journal/e_journal.goose -o builds/e_journal
+./builds/e_journal
 ```
 
-*(Note: `term_snake` targets POSIX terminals — macOS & Linux — via `goose-tui`'s `termios` layer. All other 6 apps build across macOS, Linux, and Windows.)*
+*(Note: `term_snake` targets POSIX terminals — macOS & Linux — via `goose-tui`'s `termios` layer. All other 10 apps build across macOS, Linux, and Windows.)*
 
 ### Windows (`x86_64`, PowerShell / Command Prompt)
 
@@ -229,13 +300,17 @@ With Goose (`goose.exe`) and MSVC / clang-cl installed (`goose toolchain` to ver
 mkdir builds -Force
 goose build -O2 src\gui\calculator\calculator.goose -o builds\calculator.exe
 goose build -O2 src\gui\pomodoro\pomodoro.goose -o builds\pomodoro.exe
+goose build -O2 src\gui\e_journal\e_journal.goose -o builds\e_journal.exe
+goose build -O2 src\gui\pixel_studio\pixel_studio.goose -o builds\pixel_studio.exe
 goose build -O2 src\cli\devbox\devbox.goose -o builds\devbox.exe
 goose build -O2 src\cli\sysbench\sysbench.goose -o builds\sysbench.exe
 goose build -O2 src\games2d\neon_breakout\neon_breakout.goose -o builds\neon_breakout.exe
+goose build -O2 src\games2d\sky_dash\sky_dash.goose -o builds\sky_dash.exe
+goose build -O2 src\games2d\super_goose\super_goose.goose -o builds\super_goose.exe
 goose build -O2 src\games3d\voxel_runner\voxel_runner.goose -o builds\voxel_runner.exe
 
-.\builds\calculator.exe --test
-.\builds\calculator.exe
+.\builds\e_journal.exe --test
+.\builds\e_journal.exe
 ```
 
 ### Regenerating Screenshots
@@ -259,14 +334,18 @@ heaven_goose/
 ├── src/
 │   ├── gui/
 │   │   ├── calculator/calculator.goose
-│   │   └── pomodoro/pomodoro.goose
+│   │   ├── pomodoro/pomodoro.goose
+│   │   ├── e_journal/e_journal.goose
+│   │   └── pixel_studio/pixel_studio.goose
 │   ├── cli/
 │   │   ├── devbox/devbox.goose
 │   │   └── sysbench/sysbench.goose
 │   ├── console/
 │   │   └── term_snake/term_snake.goose
 │   ├── games2d/
-│   │   └── neon_breakout/neon_breakout.goose
+│   │   ├── neon_breakout/neon_breakout.goose
+│   │   ├── sky_dash/sky_dash.goose
+│   │   └── super_goose/super_goose.goose
 │   └── games3d/
 │       └── voxel_runner/voxel_runner.goose
 ├── builds/                         # Output folder for compiled binaries (git-ignored)
@@ -274,13 +353,17 @@ heaven_goose/
 ├── screenshots/                    # Verified app screenshots rendered in README
 │   ├── calculator.png
 │   ├── pomodoro.png
+│   ├── e_journal.png
+│   ├── pixel_studio.png
 │   ├── devbox.png
 │   ├── sysbench.png
 │   ├── term_snake.png
 │   ├── neon_breakout.png
+│   ├── sky_dash.png
+│   ├── super_goose.png
 │   └── voxel_runner.png
 └── scripts/
-    ├── build_all.sh                # Compile all 7 apps with -O2
+    ├── build_all.sh                # Compile all 11 apps with -O2
     ├── test_all.sh                 # Typecheck + run all test suites
     ├── capture_screenshots.py      # Capture GUI/2D/3D + TrueColor terminal PNGs
     └── package_release.sh          # Package release binaries, tar.gz & SHA256SUMS
@@ -291,10 +374,11 @@ heaven_goose/
 ## Libraries & Ecosystem
 
 Built using packages from the Goose ecosystem and [`safdafang/goose-index`](https://github.com/safdafang/goose-index):
-- [`aardappel/goose`](https://github.com/aardappel/goose) — Compiler, runtime, and standard library (`std`, `os`, `math`, `vec`, `base64`)
+- [`aardappel/goose`](https://github.com/aardappel/goose) — Compiler, runtime, and standard library (`std`, `os`, `math`, `vec`, `json`, `base64`)
 - [`aardappel/goose_gfx`](https://github.com/aardappel/goose_gfx) — SDL3 GPU (`gfx`), Nuklear (`ui`), and PCM mixer (`audio`)
 - [`ZHENGSY/goose-tui`](https://github.com/ZHENGSY/goose-tui) — Immediate-mode diffed terminal UI framework
 - [`Macho0x/goose-uuid`](https://github.com/Macho0x/goose-uuid) — RFC 9562 UUID generator
+- [`clintecker/goose-date`](https://github.com/clintecker/goose-date) — UTC date/time formatting
 
 ---
 
