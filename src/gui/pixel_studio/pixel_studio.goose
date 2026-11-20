@@ -25,6 +25,10 @@ let TOOL_ERASER: i64 = 1;
 let TOOL_FILL: i64 = 2;
 let TOOL_PICKER: i64 = 3;
 
+let FMT_PNG_16X: i64 = 0;
+let FMT_PNG_1X: i64 = 1;
+let FMT_PPM: i64 = 2;
+
 struct PixelRGBA { r: u8, g: u8, b: u8, a: u8 }
 
 struct Snapshot {
@@ -238,7 +242,7 @@ fn new_studio() -> StudioState {
         hist_len: 0,
         hist_pos: 0,
         stroke_active: false,
-        status: to_buf96("Ready — Click & drag to paint."),
+        status: to_buf96("Ready - Click & drag to paint."),
     };
     load_goose_sprite(st);
     return st;
@@ -267,6 +271,92 @@ fn build_ppm_bytes(st: const StudioState&) -> u8[>..] {
         }
     }
     return out;
+}
+
+fn build_rgba_bytes(st: const StudioState&, scale: i64) -> u8[>..] {
+    let s = max(scale, 1);
+    let out_dim = st.grid_n * s;
+    var out: u8[>..] = [];
+    for oy in out_dim {
+        let sy = oy / s;
+        for ox in out_dim {
+            let sx = ox / s;
+            let p = st.pixels[sy * st.grid_n + sx];
+            out.push(p.r);
+            out.push(p.g);
+            out.push(p.b);
+            out.push(p.a);
+        }
+    }
+    return out;
+}
+
+fn trim_ascii(s: const u8[:]) -> u8[>..] {
+    var a: i64 = 0;
+    var b: i64 = s.len;
+    while a < b && (s[a] == ' ' || s[a] == '\t' || s[a] == '\r' || s[a] == '\n') { a++; }
+    while b > a && (s[b - 1] == ' ' || s[b - 1] == '\t' || s[b - 1] == '\r' || s[b - 1] == '\n') { b--; }
+    return str(s[a..b]);
+}
+
+fn ends_with_icase(s: const u8[:], suf: const u8[:]) -> bool {
+    if s.len < suf.len { return false; }
+    let off = s.len - suf.len;
+    for i in suf.len {
+        var ca = s[off + i];
+        var cb = suf[i];
+        if ca >= 'A' && ca <= 'Z' { ca = ca + 32; }
+        if cb >= 'A' && cb <= 'Z' { cb = cb + 32; }
+        if ca != cb { return false; }
+    }
+    return true;
+}
+
+fn default_export_dir() -> u8[>..] {
+    var home: u8[>..] = [];
+    if env("HOME", home) && home.len > 0 {
+        let desk = str(home, "/Desktop");
+        if is_dir(desk) { return desk; }
+        return home;
+    }
+    return str(".");
+}
+
+fn build_export_path(dir: const u8[:], base_name: const u8[:], fmt: i64) -> u8[>..] {
+    var clean = trim_ascii(base_name);
+    if clean.len == 0 {
+        clean = str("goose_sprite");
+    } else if ends_with_icase(clean, ".png") || ends_with_icase(clean, ".ppm") {
+        clean.resize(clean.len - 4);
+        if clean.len == 0 { clean = str("goose_sprite"); }
+    }
+    let ext = if fmt == FMT_PPM { ".ppm" } else { ".png" };
+    if dir.len == 0 || dir == "." {
+        return str(clean, ext);
+    }
+    if dir[dir.len - 1] == '/' {
+        return str(dir, clean, ext);
+    }
+    return str(dir, "/", clean, ext);
+}
+
+fn export_sprite_file(st: const StudioState&, full_path: const u8[:], fmt: i64) -> bool {
+    if fmt == FMT_PPM {
+        let ppm = build_ppm_bytes(st);
+        return write_file_atomic(full_path, ppm);
+    }
+    let sc = if fmt == FMT_PNG_1X { 1 } else { 16 };
+    let dim = st.grid_n * sc;
+    let rgba = build_rgba_bytes(st, sc);
+    let tex = gfx::texture2d(dim, dim);
+    if tex.id == 0 { return false; }
+    let up_ok = gfx::update_texture(tex, rgba);
+    var saved = false;
+    if up_ok {
+        saved = gfx::save_png(tex, full_path);
+    }
+    gfx::release(tex);
+    return saved;
 }
 
 fn make_btn_style(base: ui::StyleButton, bg: ui::Color, hover_bg: ui::Color,
@@ -310,7 +400,25 @@ fn run_tests() {
     check(starts_with(ppm, expected_header) && ppm.len == expected_header.len + 16 * 16 * 3,
           "PPM export size/header invalid");
 
-    print("PASS pixel_studio (brush, mirror-X, flood fill, undo/redo, PPM export)\n");
+    // Test RGBA 16x upscale payload, export path building, and atomic PPM file write
+    let rgba = build_rgba_bytes(st, 16);
+    check(rgba.len == 256 * 256 * 4, "16x RGBA buffer size mismatch");
+    check(rgba[0] == 10 && rgba[1] == 20 && rgba[2] == 30 && rgba[3] == 255,
+          "RGBA pixel color mismatch");
+
+    check(build_export_path("/tmp", " my_art.png ", FMT_PNG_16X) == "/tmp/my_art.png",
+          "PNG path normalization failed");
+    check(build_export_path(".", "sprite.PNG", FMT_PPM) == "sprite.ppm",
+          "PPM path normalization failed");
+    check(build_export_path("/Users/test/Desktop", "  ", FMT_PNG_1X) == "/Users/test/Desktop/goose_sprite.png",
+          "blank export filename fallback failed");
+
+    let tmp_ppm = "/tmp/pixel_studio_test.ppm";
+    check(export_sprite_file(st, tmp_ppm, FMT_PPM), "PPM file export failed");
+    check(file_exists(tmp_ppm), "exported PPM file missing on disk");
+    let _ = delete_file(tmp_ppm);
+
+    print("PASS pixel_studio (brush, mirror-X, flood fill, undo/redo, PNG/PPM export)\n");
 }
 
 fn main() {
@@ -318,6 +426,7 @@ fn main() {
     var frames: i64 = -1;
     var demo_mode = false;
     var screenshot_path = str("");
+    var export_test_path = str("");
 
     var i: i64 = 1;
     while i < argv.len {
@@ -334,6 +443,9 @@ fn main() {
         } else if a == "--screenshot" && i + 1 < argv.len {
             screenshot_path = str(argv[i + 1]);
             i++;
+        } else if a == "--export-test" && i + 1 < argv.len {
+            export_test_path = str(argv[i + 1]);
+            i++;
         }
         i++;
     }
@@ -343,6 +455,16 @@ fn main() {
         return;
     }
     defer gfx::close();
+
+    var studio = new_studio();
+    if demo_mode {
+        studio.status = to_buf96("16x16 Goose Mascot · Ready to paint or export PNG/PPM.");
+    }
+    if export_test_path.len > 0 {
+        let ok = export_sprite_file(studio, export_test_path, FMT_PNG_16X);
+        check(ok, "failed --export-test PNG");
+        return;
+    }
 
     var ctx = ui::create_from_memory(FONT, 17.0);
     guard ctx.id != 0 else {
@@ -363,6 +485,8 @@ fn main() {
     colors[ui::COLOR_HEADER] = ui::rgb(27, 32, 44);
     colors[ui::COLOR_BORDER] = ui::rgb(48, 56, 74);
     colors[ui::COLOR_TEXT] = ui::rgb(236, 242, 250);
+    colors[ui::COLOR_EDIT] = ui::rgb(30, 36, 48);
+    colors[ui::COLOR_EDIT_CURSOR] = ui::rgb(96, 165, 250);
     ui::style_from_table(ctx, colors);
 
     var root_st = ui::style(ctx);
@@ -372,10 +496,25 @@ fn main() {
     root_st.window.padding = float2 { 12.0, 10.0 };
     root_st.window.group_padding = float2 { 10.0, 10.0 };
     root_st.window.spacing = float2 { 8.0, 8.0 };
+    root_st.edit.rounding = 6.0;
+    root_st.edit.border = 1.0;
+    root_st.edit.border_color = ui::rgb(68, 82, 108);
+    root_st.edit.normal = ui::style_item_color(ui::rgb(30, 36, 48));
+    root_st.edit.hover = ui::style_item_color(ui::rgb(34, 41, 56));
+    root_st.edit.active = ui::style_item_color(ui::rgb(36, 44, 60));
+    root_st.edit.text_normal = ui::rgb(248, 250, 252);
+    root_st.edit.text_hover = ui::rgb(248, 250, 252);
+    root_st.edit.text_active = ui::rgb(248, 250, 252);
+    root_st.edit.cursor_normal = ui::rgb(96, 165, 250);
+    root_st.edit.cursor_hover = ui::rgb(96, 165, 250);
+    root_st.edit.cursor_text_normal = ui::rgb(20, 23, 31);
+    root_st.edit.cursor_text_hover = ui::rgb(20, 23, 31);
     ui::set_style(ctx, root_st);
 
     let white = ui::rgb(248, 250, 252);
     let dim_c = ui::rgb(148, 163, 184);
+    let ok_c = ui::rgb(52, 211, 153);
+    let err_c = ui::rgb(248, 113, 113);
     let border_c = ui::rgb(52, 62, 82);
     let btn_idle = make_btn_style(root_st.button, ui::rgb(34, 40, 54), ui::rgb(48, 56, 76),
                                   ui::rgb(28, 33, 44), border_c, white);
@@ -386,16 +525,24 @@ fn main() {
     let btn_warn = make_btn_style(root_st.button, ui::rgb(155, 48, 56), ui::rgb(185, 58, 68),
                                   ui::rgb(125, 36, 44), ui::rgb(248, 113, 113), white);
 
-    var studio = new_studio();
-    if demo_mode {
-        studio.status = to_buf96("16x16 Goose Mascot · Ready to paint or export PPM.");
-    }
+    let desktop_dir = default_export_dir();
+    var show_export_dialog = false;
+    var export_fmt: i64 = FMT_PNG_16X;
+    var export_to_desktop = true;
+    var export_name: u8[..64] = [];
+    export_name.append("goose_sprite");
+    var pending_export = false;
+    var export_feedback = str("");
+    var export_feedback_err = false;
 
     var has_window = false;
     var drawn: i64 = 0;
 
     while gfx::frame() {
-        if gfx::key_pressed("Escape") { break; }
+        if gfx::key_pressed("Escape") {
+            if show_export_dialog { show_export_dialog = false; }
+            else { break; }
+        }
         ui::input_from_gfx(ctx);
 
         let px = gfx::screen_size();
@@ -429,13 +576,9 @@ fn main() {
             if ui::button_label_styled(ctx, btn_idle, "Undo") { let _ = undo(studio); }
             if ui::button_label_styled(ctx, btn_idle, "Redo") { let _ = redo(studio); }
             if ui::button_label_styled(ctx, btn_warn, "Clear") { clear_canvas(studio); }
-            if ui::button_label_styled(ctx, btn_ok, "Export PPM") {
-                let ppm = build_ppm_bytes(studio);
-                if write_file_atomic("pixel_studio_export.ppm", ppm) {
-                    studio.status = to_buf96("Exported pixel_studio_export.ppm");
-                } else {
-                    studio.status = to_buf96("Export failed.");
-                }
+            if ui::button_label_styled(ctx, btn_ok, "Export...") {
+                show_export_dialog = !show_export_dialog;
+                export_feedback_err = false;
             }
 
             // Main 3-Pane Body
@@ -531,7 +674,7 @@ fn main() {
                 let mx = mouse.pos.x;
                 let my = mouse.pos.y;
                 let over_grid = mx >= gx0 && mx < gx0 + grid_px && my >= gy0 && my < gy0 + grid_px;
-                if over_grid {
+                if !show_export_dialog && over_grid {
                     let hx = clamp(((mx - gx0) / cell_sz) as! i64, 0, studio.grid_n - 1);
                     let hy = clamp(((my - gy0) / cell_sz) as! i64, 0, studio.grid_n - 1);
                     ui::stroke_rect(ctx, ui::rect(gx0 + hx * cell_sz, gy0 + hy * cell_sz, cell_sz, cell_sz),
@@ -654,10 +797,88 @@ fn main() {
 
             // Bottom Status Bar
             ui::layout_row_dynamic(ctx, 22.0, 1);
+            let status_c = if !export_feedback_err && export_feedback.len > 0 { ok_c } else { dim_c };
             ui::label_colored(ctx, str(studio.status, "  |  Left Click: Paint  ·  Right Click: Erase"),
-                              ui::TEXT_LEFT, dim_c);
+                              ui::TEXT_LEFT, status_c);
+
+            // Export Sprite Popup Dialog
+            if show_export_dialog {
+                let pop_w: f32 = 500.0;
+                let pop_h: f32 = 300.0;
+                let pop_x = max(16.0, (content.x - pop_w) * 0.5);
+                let pop_y = max(16.0, (content.y - pop_h) * 0.5);
+                let pop_r = ui::rect(pop_x, pop_y, pop_w, pop_h);
+                if ui::popup_begin(ctx, ui::POPUP_STATIC, "Export Sprite",
+                                   ui::WINDOW_TITLE | ui::WINDOW_BORDER | ui::WINDOW_NO_SCROLLBAR,
+                                   pop_r) {
+                    let name_ratios: f32[2] = [0.24, 0.76];
+                    ui::layout_row(ctx, ui::DYNAMIC, 32.0, name_ratios);
+                    ui::label_colored(ctx, "File Name", ui::TEXT_LEFT, dim_c);
+                    let _ = ui::edit_string(ctx, ui::EDIT_FIELD, export_name, ui::FILTER_DEFAULT);
+
+                    ui::layout_row_dynamic(ctx, 22.0, 1);
+                    ui::label_colored(ctx, "Format", ui::TEXT_LEFT, dim_c);
+                    ui::layout_row_dynamic(ctx, 34.0, 3);
+                    if ui::button_label_styled(ctx, if export_fmt == FMT_PNG_16X { btn_active } else { btn_idle }, "PNG (16x Crisp)") {
+                        export_fmt = FMT_PNG_16X;
+                    }
+                    if ui::button_label_styled(ctx, if export_fmt == FMT_PNG_1X { btn_active } else { btn_idle }, "PNG (1:1)") {
+                        export_fmt = FMT_PNG_1X;
+                    }
+                    if ui::button_label_styled(ctx, if export_fmt == FMT_PPM { btn_active } else { btn_idle }, "PPM (P6)") {
+                        export_fmt = FMT_PPM;
+                    }
+
+                    ui::layout_row_dynamic(ctx, 22.0, 1);
+                    ui::label_colored(ctx, "Destination", ui::TEXT_LEFT, dim_c);
+                    ui::layout_row_dynamic(ctx, 34.0, 2);
+                    if ui::button_label_styled(ctx, if export_to_desktop { btn_active } else { btn_idle }, "Desktop") {
+                        export_to_desktop = true;
+                    }
+                    if ui::button_label_styled(ctx, if !export_to_desktop { btn_active } else { btn_idle }, "Current Folder") {
+                        export_to_desktop = false;
+                    }
+
+                    let preview_dir: u8[>..] = if export_to_desktop { copy(desktop_dir) } else { str(".") };
+                    let preview_path = build_export_path(preview_dir, export_name, export_fmt);
+                    ui::layout_row_dynamic(ctx, 22.0, 1);
+                    ui::label_colored(ctx, str("Save to: ", preview_path), ui::TEXT_LEFT, dim_c);
+
+                    ui::layout_row_dynamic(ctx, 36.0, 2);
+                    if ui::button_label_styled(ctx, btn_ok, "Save Now") {
+                        pending_export = true;
+                    }
+                    if ui::button_label_styled(ctx, btn_idle, "Close") {
+                        show_export_dialog = false;
+                        ui::popup_close(ctx);
+                    }
+
+                    if export_feedback.len > 0 {
+                        ui::layout_row_dynamic(ctx, 24.0, 1);
+                        ui::label_colored(ctx, export_feedback, ui::TEXT_LEFT,
+                                          if export_feedback_err { err_c } else { ok_c });
+                    }
+                    ui::popup_end(ctx);
+                }
+            }
         }
         ui::end(ctx);
+
+        if pending_export {
+            pending_export = false;
+            let save_dir: u8[>..] = if export_to_desktop { copy(desktop_dir) } else { str(".") };
+            let target_path = build_export_path(save_dir, export_name, export_fmt);
+            if export_sprite_file(studio, target_path, export_fmt) {
+                export_feedback = str("Saved: ", target_path);
+                export_feedback_err = false;
+                studio.status = to_buf96(str("Exported -> ", target_path));
+                print("Exported sprite: ", target_path, "\n");
+            } else {
+                export_feedback = str("Export failed: ", target_path);
+                export_feedback_err = true;
+                studio.status = to_buf96("Export failed.");
+            }
+        }
 
         gfx::begin_screen(float4 { 0.07, 0.08, 0.11, 1.0 });
         gfx::end_pass();

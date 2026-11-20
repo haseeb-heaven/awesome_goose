@@ -228,9 +228,9 @@ fn load_level(g: PlatformGame&, level_num: i64) {
         add_pipe(g, 16, 10);
         set_tile(g, 23, 8, 'C'); set_tile(g, 24, 8, 'C');
         set_tile(g, 30, 9, 'B'); set_tile(g, 31, 9, '?'); set_tile(g, 32, 9, '?'); set_tile(g, 33, 9, 'B');
-        add_pipe(g, 38, 9);
+        add_pipe(g, 38, 10);
         set_tile(g, 49, 8, 'C'); set_tile(g, 50, 8, 'C');
-        set_tile(g, 56, 8, 'B'); set_tile(g, 57, 8, '?'); set_tile(g, 58, 8, 'B');
+        set_tile(g, 56, 9, 'B'); set_tile(g, 57, 9, '?'); set_tile(g, 58, 9, 'B');
         set_tile(g, 64, 6, 'C'); set_tile(g, 65, 6, 'C'); set_tile(g, 66, 6, 'C');
         add_pipe(g, 70, 10);
 
@@ -494,7 +494,7 @@ fn step_platform(g: PlatformGame&, dt: f32, move_in: f32, jump_pressed: bool,
     if j_press { g.jump_buf_t = 0.10; } else { g.jump_buf_t = max(g.jump_buf_t - dt, 0.0); }
 
     if g.jump_buf_t > 0.0 && g.coyote_t > 0.0 {
-        g.vy = -565.0;
+        g.vy = -660.0;
         g.on_ground = false;
         g.coyote_t = 0.0;
         g.jump_buf_t = 0.0;
@@ -916,11 +916,34 @@ fn run_tests() {
     check(!g3.enemies[0].alive && g3.sfx_stomp && g3.vy < 0.0 && g3.score >= 200,
           "stomping enemy from above must kill enemy and bounce player");
 
+    // Test standing jump apex height clears 3-tile pipe (> 3.8 * TILE)
+    var gj = new_platform(1);
+    let start_y = gj.py;
+    var min_y = start_y;
+    step_platform(gj, 1.0 / 60.0, 0.0, true, true, false);
+    for f in 45 {
+        step_platform(gj, 1.0 / 60.0, 0.0, false, true, false);
+        if gj.py < min_y { min_y = gj.py; }
+    }
+    check(start_y - min_y >= 3.8 * TILE, "standing jump apex must easily clear 3-tile pipe");
+
+    // Test World 1-2 pipe at x=38 is clearable with standard running jump
+    var g4 = new_platform(5);
+    load_level(g4, 2);
+    g4.px = 36.0 * TILE;
+    for f in 90 {
+        if g4.px > 40.2 * TILE { break; }
+        let want_j = g4.on_ground;
+        step_platform(g4, 1.0 / 60.0, 1.0, want_j, true, false);
+    }
+    check(g4.px > 40.2 * TILE && !g4.game_over && g4.lives == 3,
+          "hero must clear World 1-2 pipe at x=38 cleanly");
+
     var verts: Vertex2D[>..] = [];
     render_platform(g2, verts);
     check(verts.len > 300 && verts.len <= MAX_VERTS, "super_goose vertex batch invalid");
 
-    print("PASS super_goose (tile collision, coyote jump, ?-block bonk, stomp physics, GPU batching)\n");
+    print("PASS super_goose (tile collision, coyote jump, 1-2 pipe jump, ?-block bonk, stomp physics, GPU batching)\n");
 }
 
 fn main() {

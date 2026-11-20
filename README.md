@@ -2,7 +2,7 @@
 
 <p align="center">
   <img alt="Language: Goose" src="https://img.shields.io/badge/language-Goose%20v2026.4-F28C28?style=flat-square">
-  <img alt="Release: v2.0.0" src="https://img.shields.io/badge/release-v2.0.0-3B82F6?style=flat-square">
+  <img alt="Release: v2.0.1" src="https://img.shields.io/badge/release-v2.0.1-3B82F6?style=flat-square">
   <img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-10B981?style=flat-square">
   <img alt="Apps: 11 Verified" src="https://img.shields.io/badge/apps-11%20verified-8B5CF6?style=flat-square">
 </p>
@@ -84,13 +84,13 @@ A local-first, calm desktop notebook and journaling application inspired by [**`
 
 ### 4. Pixel Studio (GUI)
 
-A standalone pixel-art sprite editor with crisp live canvas zooming, 16-swatch palette + custom RGB sliders, live 1:1 preview thumbnail, multi-step undo/redo history, and instant binary **PPM (`P6`)** sprite export.
+A standalone pixel-art sprite editor with crisp live canvas zooming, 16-swatch palette + custom RGB sliders, live 1:1 preview thumbnail, multi-step undo/redo history, and an interactive **Export Sprite** dialog (**PNG 16× crisp / 1:1** & **PPM `P6`**).
 
 <p align="center">
   <img src="screenshots/pixel_studio.png" alt="Goose Pixel Studio Screenshot" width="760">
 </p>
 
-- **Features**: Switchable **16×16** / **24×24** pixel grid, **Brush** (`1px` / `2px`), **Eraser**, iterative scanline **Fill Bucket**, **Eyedropper**, optional horizontal **Mirror X** symmetry, 32-level **Undo / Redo**, gridline toggle, built-in Goose mascot preset, right-click quick erase, and `goose_sprite.ppm` export.
+- **Features**: Switchable **16×16** / **24×24** pixel grid, **Brush** (`1px` / `2px`), **Eraser**, iterative scanline **Fill Bucket**, **Eyedropper**, optional horizontal **Mirror X** symmetry, 16-level **Undo / Redo**, gridline toggle, built-in Goose mascot preset, right-click quick erase, and an interactive **Export Sprite** dialog saving **PNG (16× crisp & 1:1 transparent)** or **PPM (`P6`)** to Desktop or current folder.
 - **Run**:
   ```sh
   ./builds/pixel_studio
@@ -232,18 +232,18 @@ A 3D endless cyber-highway runner written with custom GLSL vertex/fragment shade
 Prebuilt native executables and checksums are published on the [**Releases Page**](https://github.com/haseeb-heaven/heaven_goose/releases):
 
 - **Latest Release**: [`github.com/haseeb-heaven/heaven_goose/releases/latest`](https://github.com/haseeb-heaven/heaven_goose/releases/latest)
-- **v2.0.0 Release**: [`github.com/haseeb-heaven/heaven_goose/releases/tag/v2.0.0`](https://github.com/haseeb-heaven/heaven_goose/releases/tag/v2.0.0)
+- **v2.0.1 Release**: [`github.com/haseeb-heaven/heaven_goose/releases/tag/v2.0.1`](https://github.com/haseeb-heaven/heaven_goose/releases/tag/v2.0.1)
 
-Available assets in `v2.0.0`:
-- **`heaven_goose-v2.0.0-macos-arm64.tar.gz`** — Archive with all 11 compiled apps + `LICENSE` + `README.md`
+Available assets in `v2.0.1`:
+- **`heaven_goose-v2.0.1-macos-arm64.tar.gz`** — Archive with all 11 compiled apps + `LICENSE` + `README.md`
 - Individual executables: `calculator-macos-arm64`, `pomodoro-macos-arm64`, `e_journal-macos-arm64`, `pixel_studio-macos-arm64`, `devbox-macos-arm64`, `sysbench-macos-arm64`, `term_snake-macos-arm64`, `neon_breakout-macos-arm64`, `sky_dash-macos-arm64`, `super_goose-macos-arm64`, `voxel_runner-macos-arm64`
 - **`SHA256SUMS.txt`** — SHA-256 verification checksums
 
 ### Running Downloaded Binaries on macOS
 
 ```sh
-tar -xzf heaven_goose-v2.0.0-macos-arm64.tar.gz
-cd heaven_goose-v2.0.0-macos-arm64
+tar -xzf heaven_goose-v2.0.1-macos-arm64.tar.gz
+cd heaven_goose-v2.0.1-macos-arm64
 chmod +x *
 # Optional if downloaded via browser and Gatekeeper flags quarantine:
 xattr -d com.apple.quarantine * 2>/dev/null || true

@@ -503,6 +503,10 @@ fn apply_ui_theme(ctx: ui::Context, p: ThemePalette) {
     st.edit.cursor_hover = p.accent;
     st.edit.cursor_text_normal = p.accent_text;
     st.edit.cursor_text_hover = p.accent_text;
+    st.edit.selected_normal = p.accent_soft;
+    st.edit.selected_hover = p.accent_soft;
+    st.edit.selected_text_normal = p.text;
+    st.edit.selected_text_hover = p.text;
     ui::set_style(ctx, st);
 }
 
@@ -541,7 +545,82 @@ fn run_tests() {
     let _ = bad_s;
     check(!bad_ok && bad_err.len > 0, "invalid JSON must fail cleanly");
 
-    print("PASS e_journal (CRUD model, tag normalization, search, UTC dates, atomic JSON backup)\n");
+    // Interactive Nuklear text field & multiline body editor test (Title + EDIT_BOX)
+    let ui_ctx = ui::create(16.0);
+    let ui_ed = ui::create_text_edit();
+    ui::set_text(ui_ed, "Existing");
+    ui::set_mode(ui_ed, ui::TEXT_EDIT_MODE_INSERT);
+    var ui_title: u8[..128] = to_buf128("");
+    var title_box = ui::rect(0.0, 0.0, 0.0, 0.0);
+    var body_box = ui::rect(0.0, 0.0, 0.0, 0.0);
+
+    for step in 11 {
+        var mx: i64 = 900;
+        var my: i64 = 900;
+        var md = false;
+        if step == 1 {
+            mx = (title_box.x + 10.0) as! i64;
+            my = (title_box.y + title_box.h * 0.5) as! i64;
+            md = true;
+        } else if step == 3 || step == 6 {
+            mx = (body_box.x + 12.0) as! i64;
+            my = (body_box.y + 12.0) as! i64;
+            md = true;
+        }
+        ui::input_begin(ui_ctx);
+        ui::input_motion(ui_ctx, mx, my);
+        ui::input_button(ui_ctx, ui::BUTTON_LEFT, mx, my, md);
+        if step == 2 { ui::input_text(ui_ctx, "My Note"); }
+        if step == 4 {
+            ui::input_key(ui_ctx, ui::KEY_TEXT_END, true);
+            ui::input_key(ui_ctx, ui::KEY_TEXT_END, false);
+        }
+        if step == 5 { ui::input_text(ui_ctx, " + updated"); }
+        if step == 7 { ui::input_text(ui_ctx, "First line"); }
+        if step == 8 {
+            ui::input_key(ui_ctx, ui::KEY_ENTER, true);
+            ui::input_key(ui_ctx, ui::KEY_ENTER, false);
+        }
+        if step == 9 { ui::input_text(ui_ctx, "Second!"); }
+        if step == 10 {
+            ui::input_key(ui_ctx, ui::KEY_BACKSPACE, true);
+            ui::input_key(ui_ctx, ui::KEY_BACKSPACE, false);
+        }
+        ui::input_end(ui_ctx);
+
+        if ui::begin(ui_ctx, "TestJournalWin", ui::rect(0.0, 0.0, 700.0, 500.0), 0) {
+            ui::layout_row_dynamic(ui_ctx, 300.0, 1);
+            if ui::group_begin(ui_ctx, "EditorPane", ui::WINDOW_BORDER) {
+                if step == 6 { ui::edit_unfocus(ui_ctx); }
+                ui::layout_row_dynamic(ui_ctx, 28.0, 1);
+                title_box = ui::widget_bounds(ui_ctx);
+                let _ = ui::edit_string(ui_ctx, ui::EDIT_FIELD, ui_title, ui::FILTER_DEFAULT);
+                ui::layout_row_dynamic(ui_ctx, 180.0, 1);
+                body_box = ui::widget_bounds(ui_ctx);
+                let _ = ui::edit_buffer(ui_ctx, ui::EDIT_BOX, ui_ed, ui::FILTER_DEFAULT);
+                ui::group_end(ui_ctx);
+            }
+        }
+        ui::end(ui_ctx);
+
+        if step == 2 {
+            check(ui_title == "My Note", "Title EDIT_FIELD did not accept typed text");
+        }
+        if step == 5 {
+            check(ui::text(ui_ed) == "Existing + updated",
+                  "Body EDIT_BOX failed updating existing entry text");
+            ui::set_text(ui_ed, "");
+            ui::set_mode(ui_ed, ui::TEXT_EDIT_MODE_INSERT);
+        }
+        if step == 10 {
+            check(ui::text(ui_ed) == "First line\nSecond",
+                  "Body EDIT_BOX did not accept new multiline typed text");
+        }
+    }
+    ui::destroy(ui_ed);
+    ui::destroy(ui_ctx);
+
+    print("PASS e_journal (CRUD model, tag normalization, search, UTC dates, atomic JSON backup, UI text edit)\n");
 }
 
 fn main() {
@@ -622,6 +701,8 @@ fn main() {
     var search_query: u8[..64] = [];
     var filter_tag: u8[..32] = [];
     var confirm_delete = false;
+    var unfocus_editor_next = false;
+    var focus_title_delay: i64 = 0;
     var notice_text = str("Local journal ready.");
     var notice_is_err = false;
     var active_theme = -1;
@@ -632,6 +713,7 @@ fn main() {
             draft_title = store.entries[idx].title;
             draft_tags = store.entries[idx].tags;
             ui::set_text(body_edit, store.entries[idx].body);
+            ui::set_mode(body_edit, ui::TEXT_EDIT_MODE_INSERT);
         }
     }
 
@@ -639,7 +721,6 @@ fn main() {
     var drawn: i64 = 0;
 
     while gfx::frame() {
-        if gfx::key_pressed("Escape") { break; }
         ui::input_from_gfx(ctx);
 
         if active_theme != store.theme {
@@ -698,9 +779,12 @@ fn main() {
             if ui::button_label_styled(ctx, btn_primary, "+ New Entry") {
                 active_view = VIEW_JOURNAL;
                 selected_id = -1;
+                unfocus_editor_next = true;
+                focus_title_delay = 2;
                 draft_title = to_buf128("");
                 draft_tags = to_buf128("");
                 ui::set_text(body_edit, "");
+                ui::set_mode(body_edit, ui::TEXT_EDIT_MODE_INSERT);
                 confirm_delete = false;
                 notice_text = str("New entry draft ready.");
                 notice_is_err = false;
@@ -750,9 +834,11 @@ fn main() {
                         let card_lbl = truncate_ellipsis(e.title, 34);
                         if ui::button_label_styled(ctx, if is_sel { btn_selected } else { btn_ghost }, card_lbl) {
                             selected_id = e.id;
+                            unfocus_editor_next = true;
                             draft_title = e.title;
                             draft_tags = e.tags;
                             ui::set_text(body_edit, e.body);
+                            ui::set_mode(body_edit, ui::TEXT_EDIT_MODE_INSERT);
                             confirm_delete = false;
                             notice_text = str("Opened entry #", e.id);
                             notice_is_err = false;
@@ -767,6 +853,10 @@ fn main() {
 
                 // Right Writing Surface
                 if ui::group_begin(ctx, "EditorPane", ui::WINDOW_BORDER) {
+                    if unfocus_editor_next {
+                        ui::edit_unfocus(ctx);
+                        unfocus_editor_next = false;
+                    }
                     let cur_body = ui::text(body_edit);
                     let cur_idx = find_entry_index(store.entries, selected_id);
                     var dirty = false;
@@ -784,6 +874,12 @@ fn main() {
                     let field_lbl_ratio: f32[2] = [0.12, 0.88];
                     ui::layout_row(ctx, ui::DYNAMIC, 32.0, field_lbl_ratio);
                     ui::label_colored(ctx, "Title", ui::TEXT_LEFT, pal.weak_text);
+                    if focus_title_delay > 0 {
+                        focus_title_delay--;
+                        if focus_title_delay == 0 {
+                            ui::edit_focus(ctx, ui::EDIT_ALWAYS_INSERT_MODE);
+                        }
+                    }
                     let _ = ui::edit_string(ctx, ui::EDIT_FIELD, draft_title, ui::FILTER_DEFAULT);
 
                     ui::layout_row(ctx, ui::DYNAMIC, 30.0, field_lbl_ratio);
@@ -808,7 +904,7 @@ fn main() {
                     var body_h = pane_h - 172.0;
                     if body_h < 140.0 { body_h = 140.0; }
                     ui::layout_row_dynamic(ctx, body_h, 1);
-                    let _ = ui::edit_buffer(ctx, ui::EDIT_EDITOR, body_edit, ui::FILTER_DEFAULT);
+                    let _ = ui::edit_buffer(ctx, ui::EDIT_BOX, body_edit, ui::FILTER_DEFAULT);
 
                     // Action buttons
                     ui::layout_row_dynamic(ctx, 34.0, 4);
@@ -882,9 +978,11 @@ fn main() {
                             store.next_id++;
                             selected_id = dup_e.id;
                             store.entries.push(dup_e);
+                            unfocus_editor_next = true;
                             draft_title = dup_e.title;
                             draft_tags = dup_e.tags;
                             ui::set_text(body_edit, dup_e.body);
+                            ui::set_mode(body_edit, ui::TEXT_EDIT_MODE_INSERT);
                             if !demo_mode { let _ = save_store_file(db_path, store); }
                             notice_text = str("Duplicated entry #", dup_e.id);
                             notice_is_err = false;
@@ -900,6 +998,7 @@ fn main() {
                         if ui::button_label_styled(ctx, btn_danger, "Confirm Delete") {
                             if cur_idx >= 0 {
                                 remove_at(store.entries, cur_idx);
+                                unfocus_editor_next = true;
                                 if store.entries.len > 0 {
                                     selected_id = store.entries[0].id;
                                     draft_title = store.entries[0].title;
@@ -911,6 +1010,7 @@ fn main() {
                                     draft_tags = to_buf128("");
                                     ui::set_text(body_edit, "");
                                 }
+                                ui::set_mode(body_edit, ui::TEXT_EDIT_MODE_INSERT);
                                 if !demo_mode { let _ = save_store_file(db_path, store); }
                                 notice_text = str("Entry deleted.");
                                 notice_is_err = false;
@@ -966,12 +1066,19 @@ fn main() {
                         let ok, err = load_store_file("e_journal_backup.json", imp);
                         if ok {
                             store = copy(imp);
+                            unfocus_editor_next = true;
                             if store.entries.len > 0 {
                                 selected_id = store.entries[0].id;
                                 draft_title = store.entries[0].title;
                                 draft_tags = store.entries[0].tags;
                                 ui::set_text(body_edit, store.entries[0].body);
+                            } else {
+                                selected_id = -1;
+                                draft_title = to_buf128("");
+                                draft_tags = to_buf128("");
+                                ui::set_text(body_edit, "");
                             }
+                            ui::set_mode(body_edit, ui::TEXT_EDIT_MODE_INSERT);
                             notice_text = str("Imported ", store.entries.len, " entries from backup.");
                             notice_is_err = false;
                         } else {
@@ -981,7 +1088,7 @@ fn main() {
                     }
 
                     ui::layout_row_dynamic(ctx, 26.0, 1);
-                    ui::label_colored(ctx, "About: E-Journal Goose Edition — inspired by haseeb-heaven/e-journal (MIT)",
+                    ui::label_colored(ctx, "About: E-Journal Goose Edition - inspired by haseeb-heaven/e-journal (MIT)",
                                       ui::TEXT_LEFT, pal.weak_text);
                     ui::group_end(ctx);
                 }
