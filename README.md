@@ -278,64 +278,23 @@ shasum -a 256 -c SHA256SUMS.txt
 
 ---
 
-## How to Build & Run for Your System
+## Build & Run
 
-### Prerequisites
+Requires the [Goose compiler](https://github.com/aardappel/goose/releases) and a C/C++ toolchain. Run from the repository root.
 
-1. Install the [**Goose compiler**](https://github.com/aardappel/goose/releases) (`v2026.4` or newer) and ensure `goose` is on your `PATH`.
-   - You can also build Goose from source via CMake + C++20 compiler (`goose toolchain` verifies your setup).
-2. Ensure a C compiler (`clang`, `gcc`, or `msvc`) is available (`goose build` uses it to emit native binaries).
-3. Clone this repository:
-   ```sh
-   git clone https://github.com/haseeb-heaven/awesome_goose.git
-   cd awesome_goose
-   ```
+### macOS / Linux — all 12 apps
 
-### macOS (Apple Silicon / Intel) & Linux (`x86_64` / `arm64`)
-
-Build all 12 apps into `builds/`:
 ```sh
-mkdir -p builds
-for src in src/*/*/*.goose; do
-  name="$(basename "$src" .goose)"
-  goose build -O2 "$src" -o "builds/$name"
-done
+mkdir -p builds; for src in src/*/*/*.goose; do goose build -O2 "$src" -o "builds/$(basename "$src" .goose)" || break; done
 ```
 
-Run all typechecks and built-in unit tests (`--test`):
-```sh
-for src in src/*/*/*.goose; do goose check "$src"; done
-for bin in builds/*; do [ -x "$bin" ] && "$bin" --test; done
-```
-
-Build and run a single app manually:
-```sh
-goose build -O2 src/console/sysmon/sysmon.goose -o builds/sysmon
-./builds/sysmon
-```
-
-*(Note: `sysmon` and `term_snake` target POSIX terminals — macOS & Linux — via `goose-tui`'s `termios` layer. All other 10 apps build across macOS, Linux, and Windows.)*
-
-### Windows (`x86_64`, PowerShell / Command Prompt)
-
-With Goose (`goose.exe`) and MSVC / clang-cl installed (`goose toolchain` to verify):
+### Windows — 10 supported apps (PowerShell)
 
 ```powershell
-mkdir builds -Force
-goose build -O2 src\gui\calculator\calculator.goose -o builds\calculator.exe
-goose build -O2 src\gui\pomodoro\pomodoro.goose -o builds\pomodoro.exe
-goose build -O2 src\gui\e_journal\e_journal.goose -o builds\e_journal.exe
-goose build -O2 src\gui\pixel_studio\pixel_studio.goose -o builds\pixel_studio.exe
-goose build -O2 src\cli\devbox\devbox.goose -o builds\devbox.exe
-goose build -O2 src\cli\sysbench\sysbench.goose -o builds\sysbench.exe
-goose build -O2 src\games2d\neon_breakout\neon_breakout.goose -o builds\neon_breakout.exe
-goose build -O2 src\games2d\sky_dash\sky_dash.goose -o builds\sky_dash.exe
-goose build -O2 src\games2d\super_goose\super_goose.goose -o builds\super_goose.exe
-goose build -O2 src\games3d\voxel_runner\voxel_runner.goose -o builds\voxel_runner.exe
-
-.\builds\e_journal.exe --test
-.\builds\e_journal.exe
+New-Item -ItemType Directory -Force builds | Out-Null; Get-ChildItem src/gui/*/*.goose,src/cli/*/*.goose,src/games2d/*/*.goose,src/games3d/*/*.goose | ForEach-Object { goose build -O2 $_.FullName -o "builds/$($_.BaseName).exe"; if ($LASTEXITCODE -ne 0) { break } }
 ```
+
+Run any built executable from `builds/`. `sysmon` and `term_snake` require POSIX terminals and are excluded on Windows.
 
 ---
 
